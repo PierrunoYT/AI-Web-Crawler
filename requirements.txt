@@ -1,0 +1,6 @@
+crawl4ai
+aiohttp
+asyncio
+pydantic
+tenacity
+openai

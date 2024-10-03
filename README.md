@@ -38,15 +38,22 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
      source crawl4ai_env/bin/activate
      ```
 
-3. Install Crawl4AI:
+3. Install requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Install Crawl4AI:
    ```bash
    pip install crawl4ai[all]
    ```
 
-4. Download required models:
+5. Download required models:
    ```bash
    crawl4ai-download-models
    ```
+
+Note: The `requirements.txt` file includes the necessary dependencies for the project. If you prefer to install dependencies manually or want more control over the versions, you can install them individually instead of using the requirements file.
 
 ## Quick Start
 
