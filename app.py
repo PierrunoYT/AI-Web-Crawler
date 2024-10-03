@@ -10,9 +10,9 @@ def create_app(crawler):
         return render_template('index.html')
 
     @app.route('/crawl', methods=['POST'])
-def crawl():
-    url = request.form['url']
-    crawl_type = request.form['type']
+    def crawl():
+        url = request.form['url']
+        crawl_type = request.form['type']
 
     if crawl_type == 'basic':
         result = asyncio.run(crawler.basic_crawl(url))
