@@ -8,7 +8,13 @@ from typing import List, Dict, Any, Optional, Callable
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy, LLMExtractionStrategy, CosineStrategy, NoExtractionStrategy
 import json
-from crawl4ai.chunking_strategy import RegexChunking
+from crawl4ai.chunking_strategy import (
+    RegexChunking,
+    NlpSentenceChunking,
+    TopicSegmentationChunking,
+    FixedLengthWordChunking,
+    SlidingWindowChunking
+)
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 from playwright.async_api import Page, Browser
 from openai import AsyncOpenAI
@@ -588,6 +594,44 @@ class WebCrawler:
             await crawler.crawler_strategy.kill_session(session_id)
 
         return all_items
+
+    async def chunk_content(self, url: str, chunking_strategy: str = 'regex', **kwargs) -> List[str]:
+        """
+        Crawl a URL and chunk the content using the specified chunking strategy.
+
+        :param url: URL to crawl
+        :param chunking_strategy: Strategy to use for chunking ('regex', 'nlp', 'topic', 'fixed', 'sliding')
+        :param kwargs: Additional parameters for the chunking strategy
+        :return: List of content chunks
+        """
+        async with self.crawler as crawler:
+            result = await crawler.arun(url=url, bypass_cache=True)
+
+            if not result.success:
+                return [f"Error: {result.error_message}"]
+
+            content = result.extracted_content or result.html
+
+            if chunking_strategy == 'regex':
+                patterns = kwargs.get('patterns', ['\n\n'])
+                chunker = RegexChunking(patterns=patterns)
+            elif chunking_strategy == 'nlp':
+                chunker = NlpSentenceChunking()
+            elif chunking_strategy == 'topic':
+                num_keywords = kwargs.get('num_keywords', 3)
+                chunker = TopicSegmentationChunking(num_keywords=num_keywords)
+            elif chunking_strategy == 'fixed':
+                chunk_size = kwargs.get('chunk_size', 100)
+                chunker = FixedLengthWordChunking(chunk_size=chunk_size)
+            elif chunking_strategy == 'sliding':
+                window_size = kwargs.get('window_size', 100)
+                step = kwargs.get('step', 50)
+                chunker = SlidingWindowChunking(window_size=window_size, step=step)
+            else:
+                return ["Error: Invalid chunking strategy"]
+
+            chunks = chunker.chunk(content)
+            return chunks
 
     async def extract_complex_product_data(self, url: str) -> Dict[str, Any]:
         """
