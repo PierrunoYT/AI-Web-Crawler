@@ -532,3 +532,151 @@ class WebCrawler:
             result = await self.advanced_configurable_crawl(url, **kwargs)
             if result.get('error') is None:
                 return result
+
+    async def basic_session_crawl(self, url: str, num_pages: int = 3, load_more_selector: str = '.load-more-button', content_selector: str = '.content-item') -> List[Dict[str, Any]]:
+        """
+        Perform a basic session-based crawl on a dynamic website.
+        
+        :param url: URL to crawl
+        :param num_pages: Number of pages to crawl
+        :param load_more_selector: CSS selector for the 'Load More' button
+        :param content_selector: CSS selector for the content items
+        :return: List of extracted content items
+        """
+        session_id = f"session_{int(time.time())}"
+        all_items = []
+
+        async with self.crawler as crawler:
+            for page in range(num_pages):
+                result = await crawler.arun(
+                    url=url,
+                    session_id=session_id,
+                    js_code=f"document.querySelector('{load_more_selector}').click();" if page > 0 else None,
+                    css_selector=content_selector,
+                    bypass_cache=True
+                )
+
+                if result.success:
+                    items = result.extracted_content.split(content_selector)
+                    all_items.extend(items[1:])  # Skip the first empty item
+                    print(f"Page {page + 1}: Found {len(items) - 1} items")
+                else:
+                    print(f"Error on page {page + 1}: {result.error_message}")
+                    break
+
+            await crawler.crawler_strategy.kill_session(session_id)
+
+        return all_items
+
+    async def advanced_session_crawl_with_hooks(self, url: str, num_pages: int = 3, content_selector: str = 'li.commit-item', next_page_selector: str = 'a.pagination-next') -> List[Dict[str, Any]]:
+        """
+        Perform an advanced session-based crawl with custom execution hooks.
+        
+        :param url: URL to crawl
+        :param num_pages: Number of pages to crawl
+        :param content_selector: CSS selector for the content items
+        :param next_page_selector: CSS selector for the 'Next Page' button
+        :return: List of extracted content items
+        """
+        first_item = ""
+
+        async def on_execution_started(page):
+            nonlocal first_item
+            try:
+                while True:
+                    await page.wait_for_selector(content_selector)
+                    item = await page.query_selector(f"{content_selector} h4")
+                    item_text = await item.evaluate("(element) => element.textContent")
+                    item_text = item_text.strip()
+                    if item_text and item_text != first_item:
+                        first_item = item_text
+                        break
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                print(f"Warning: New content didn't appear after JavaScript execution: {e}")
+
+        async with self.crawler as crawler:
+            crawler.crawler_strategy.set_hook("on_execution_started", on_execution_started)
+
+            session_id = f"session_{int(time.time())}"
+            all_items = []
+
+            js_next_page = f"""
+            const button = document.querySelector('{next_page_selector}');
+            if (button) button.click();
+            """
+
+            for page in range(num_pages):
+                result = await crawler.arun(
+                    url=url,
+                    session_id=session_id,
+                    css_selector=content_selector,
+                    js_code=js_next_page if page > 0 else None,
+                    bypass_cache=True,
+                    js_only=page > 0
+                )
+
+                if result.success:
+                    items = result.extracted_content.split(content_selector)
+                    all_items.extend(items[1:])  # Skip the first empty item
+                    print(f"Page {page + 1}: Found {len(items) - 1} items")
+                else:
+                    print(f"Error on page {page + 1}: {result.error_message}")
+                    break
+
+            await crawler.crawler_strategy.kill_session(session_id)
+
+        return all_items
+
+    async def wait_for_parameter_crawl(self, url: str, num_pages: int = 3, content_selector: str = 'li.commit-item', next_page_selector: str = 'a.pagination-next') -> List[Dict[str, Any]]:
+        """
+        Perform a session-based crawl using the wait_for parameter.
+        
+        :param url: URL to crawl
+        :param num_pages: Number of pages to crawl
+        :param content_selector: CSS selector for the content items
+        :param next_page_selector: CSS selector for the 'Next Page' button
+        :return: List of extracted content items
+        """
+        async with self.crawler as crawler:
+            session_id = f"session_{int(time.time())}"
+            all_items = []
+
+            js_next_page = f"""
+            const items = document.querySelectorAll('{content_selector} h4');
+            if (items.length > 0) {{
+                window.lastItem = items[0].textContent.trim();
+            }}
+            const button = document.querySelector('{next_page_selector}');
+            if (button) button.click();
+            """
+
+            wait_for = f"""() => {{
+                const items = document.querySelectorAll('{content_selector} h4');
+                if (items.length === 0) return false;
+                const firstItem = items[0].textContent.trim();
+                return firstItem !== window.lastItem;
+            }}"""
+
+            for page in range(num_pages):
+                result = await crawler.arun(
+                    url=url,
+                    session_id=session_id,
+                    css_selector=content_selector,
+                    js_code=js_next_page if page > 0 else None,
+                    wait_for=wait_for if page > 0 else None,
+                    js_only=page > 0,
+                    bypass_cache=True
+                )
+
+                if result.success:
+                    items = result.extracted_content.split(content_selector)
+                    all_items.extend(items[1:])  # Skip the first empty item
+                    print(f"Page {page + 1}: Found {len(items) - 1} items")
+                else:
+                    print(f"Error on page {page + 1}: {result.error_message}")
+                    break
+
+            await crawler.crawler_strategy.kill_session(session_id)
+
+        return all_items
