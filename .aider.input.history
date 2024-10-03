@@ -1076,3 +1076,1530 @@
 
 # 2024-10-03 12:09:58.727195
 +n
+
+# 2024-10-03 12:42:53.699089
++Crawl Result
++
++The CrawlResult class is the heart of Crawl4AI's output, encapsulating all the data extracted from a crawling session. This class contains various fields that store the results of the web crawling and extraction process. Let's break down each field and see what it holds. 🎉
++Class Definition
++
++from pydantic import BaseModel
++from typing import Dict, List, Optional
++
++class CrawlResult(BaseModel):
++    url: str
++    html: str
++    success: bool
++    cleaned_html: Optional[str] = None
++    media: Dict[str, List[Dict]] = {}
++    links: Dict[str, List[Dict]] = {}
++    screenshot: Optional[str] = None
++    markdown: Optional[str] = None
++    extracted_content: Optional[str] = None
++    metadata: Optional[dict] = None
++    error_message: Optional[str] = None
++    session_id: Optional[str] = None
++    responser_headers: Optional[dict] = None
++    status_code: Optional[int] = None
++
++Fields Explanation
++url: str
++
++The URL that was crawled. This field simply stores the URL of the web page that was processed.
++html: str
++
++The raw HTML content of the web page. This is the unprocessed HTML source as retrieved by the crawler.
++success: bool
++
++A flag indicating whether the crawling and extraction were successful. If any error occurs during the process, this will be False.
++cleaned_html: Optional[str]
++
++The cleaned HTML content of the web page. This field holds the HTML after removing unwanted tags like <script>, <style>, and others that do not contribute to the useful content.
++media: Dict[str, List[Dict]]
++
++A dictionary containing lists of extracted media elements from the web page. The media elements are categorized into images, videos, and audios. Here's how they are structured:
++
++    Images: Each image is represented as a dictionary with src (source URL) and alt (alternate text).
++    Videos: Each video is represented similarly with src and alt.
++    Audios: Each audio is represented with src and alt.
++
++media = {
++    'images': [
++        {'src': 'image_url1', 'alt': 'description1', "type": "image"},
++        {'src': 'image_url2', 'alt': 'description2', "type": "image"}
++    ],
++    'videos': [
++        {'src': 'video_url1', 'alt': 'description1', "type": "video"}
++    ],
++    'audios': [
++        {'src': 'audio_url1', 'alt': 'description1', "type": "audio"}
++    ]
++}
++
++links: Dict[str, List[Dict]]
++
++A dictionary containing lists of internal and external links extracted from the web page. Each link is represented as a dictionary with href (URL) and text (link text).
++
++    Internal Links: Links pointing to the same domain.
++    External Links: Links pointing to different domains.
++
++links = {
++    'internal': [
++        {'href': 'internal_link1', 'text': 'link_text1'},
++        {'href': 'internal_link2', 'text': 'link_text2'}
++    ],
++    'external': [
++        {'href': 'external_link1', 'text': 'link_text1'}
++    ]
++}
++
++screenshot: Optional[str]
++
++A base64-encoded screenshot of the web page. This field stores the screenshot data if the crawling was configured to take a screenshot.
++markdown: Optional[str]
++
++The content of the web page converted to Markdown format. This is useful for generating clean, readable text that retains the structure of the original HTML.
++extracted_content: Optional[str]
++
++The content extracted based on the specified extraction strategy. This field holds the meaningful content blocks extracted from the web page, ready for your AI and data processing needs.
++metadata: Optional[dict]
++
++A dictionary containing metadata extracted from the web page, such as title, description, keywords, and other meta tags.
++error_message: Optional[str]
++
++If an error occurs during crawling, this field will contain the error message, helping you debug and understand what went wrong. 🚨
++session_id: Optional[str]
++
++A unique identifier for the crawling session. This can be useful for tracking and managing multiple crawling sessions.
++responser_headers: Optional[dict]
++
++A dictionary containing the response headers from the web server. This can provide additional information about the server and the response.
++status_code: Optional[int]
++
++The HTTP status code of the response. This indicates the success or failure of the HTTP request (e.g., 200 for success, 404 for not found, etc.)
+
+# 2024-10-03 12:43:13.126775
++n
+
+# 2024-10-03 12:43:33.871517
++
++Session-Based Crawling for Dynamic Content
++
++In modern web applications, content is often loaded dynamically without changing the URL. Examples include "Load More" buttons, infinite scrolling, or paginated content that updates via JavaScript. To effectively crawl such websites, Crawl4AI provides powerful session-based crawling capabilities.
++
++This guide will explore advanced techniques for crawling dynamic content using Crawl4AI's session management features.
++Understanding Session-Based Crawling
++
++Session-based crawling allows you to maintain a persistent browser session across multiple requests. This is crucial when:
++
++    The content changes dynamically without URL changes
++    You need to interact with the page (e.g., clicking buttons) between requests
++    The site requires authentication or maintains state across pages
++
++Crawl4AI's AsyncWebCrawler class supports session-based crawling through the session_id parameter and related methods.
++Basic Concepts
++
++Before diving into examples, let's review some key concepts:
++
++    Session ID: A unique identifier for a browsing session. Use the same session_id across multiple arun calls to maintain state.
++    JavaScript Execution: Use the js_code parameter to execute JavaScript on the page, such as clicking a "Load More" button.
++    CSS Selectors: Use these to target specific elements for extraction or interaction.
++    Extraction Strategy: Define how to extract structured data from the page.
++    Wait Conditions: Specify conditions to wait for before considering the page loaded.
++
++Example 1: Basic Session-Based Crawling
++
++Let's start with a basic example of session-based crawling:
++
++import asyncio
++from crawl4ai import AsyncWebCrawler
++
++async def basic_session_crawl():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        session_id = "my_session"
++        url = "https://example.com/dynamic-content"
++
++        for page in range(3):
++            result = await crawler.arun(
++                url=url,
++                session_id=session_id,
++                js_code="document.querySelector('.load-more-button').click();" if page > 0 else None,
++                css_selector=".content-item",
++                bypass_cache=True
++            )
++
++            print(f"Page {page + 1}: Found {result.extracted_content.count('.content-item')} items")
++
++        await crawler.crawler_strategy.kill_session(session_id)
++
++asyncio.run(basic_session_crawl())
++
++This example demonstrates: 1. Using a consistent session_id across multiple arun calls 2. Executing JavaScript to load more content after the first page 3. Using a CSS selector to extract specific content 4. Properly closing the session after crawling
++Advanced Technique 1: Custom Execution Hooks
++
++Crawl4AI allows you to set custom hooks that execute at different stages of the crawling process. This is particularly useful for handling complex loading scenarios.
++
++Here's an example that waits for new content to appear before proceeding:
++
++async def advanced_session_crawl_with_hooks():
++    first_commit = ""
++
++    async def on_execution_started(page):
++        nonlocal first_commit
++        try:
++            while True:
++                await page.wait_for_selector("li.commit-item h4")
++                commit = await page.query_selector("li.commit-item h4")
++                commit = await commit.evaluate("(element) => element.textContent")
++                commit = commit.strip()
++                if commit and commit != first_commit:
++                    first_commit = commit
++                    break
++                await asyncio.sleep(0.5)
++        except Exception as e:
++            print(f"Warning: New content didn't appear after JavaScript execution: {e}")
++
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        crawler.crawler_strategy.set_hook("on_execution_started", on_execution_started)
++
++        url = "https://github.com/example/repo/commits/main"
++        session_id = "commit_session"
++        all_commits = []
++
++        js_next_page = """
++        const button = document.querySelector('a.pagination-next');
++        if (button) button.click();
++        """
++
++        for page in range(3):
++            result = await crawler.arun(
++                url=url,
++                session_id=session_id,
++                css_selector="li.commit-item",
++                js_code=js_next_page if page > 0 else None,
++                bypass_cache=True,
++                js_only=page > 0
++            )
++
++            commits = result.extracted_content.select("li.commit-item")
++            all_commits.extend(commits)
++            print(f"Page {page + 1}: Found {len(commits)} commits")
++
++        await crawler.crawler_strategy.kill_session(session_id)
++        print(f"Successfully crawled {len(all_commits)} commits across 3 pages")
++
++asyncio.run(advanced_session_crawl_with_hooks())
++
++This technique uses a custom on_execution_started hook to ensure new content has loaded before proceeding to the next step.
++Advanced Technique 2: Integrated JavaScript Execution and Waiting
++
++Instead of using separate hooks, you can integrate the waiting logic directly into your JavaScript execution. This approach can be more concise and easier to manage for some scenarios.
++
++Here's an example:
++
++async def integrated_js_and_wait_crawl():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        url = "https://github.com/example/repo/commits/main"
++        session_id = "integrated_session"
++        all_commits = []
++
++        js_next_page_and_wait = """
++        (async () => {
++            const getCurrentCommit = () => {
++                const commits = document.querySelectorAll('li.commit-item h4');
++                return commits.length > 0 ? commits[0].textContent.trim() : null;
++            };
++
++            const initialCommit = getCurrentCommit();
++            const button = document.querySelector('a.pagination-next');
++            if (button) button.click();
++
++            while (true) {
++                await new Promise(resolve => setTimeout(resolve, 100));
++                const newCommit = getCurrentCommit();
++                if (newCommit && newCommit !== initialCommit) {
++                    break;
++                }
++            }
++        })();
++        """
++
++        schema = {
++            "name": "Commit Extractor",
++            "baseSelector": "li.commit-item",
++            "fields": [
++                {
++                    "name": "title",
++                    "selector": "h4.commit-title",
++                    "type": "text",
++                    "transform": "strip",
++                },
++            ],
++        }
++        extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
++
++        for page in range(3):
++            result = await crawler.arun(
++                url=url,
++                session_id=session_id,
++                css_selector="li.commit-item",
++                extraction_strategy=extraction_strategy,
++                js_code=js_next_page_and_wait if page > 0 else None,
++                js_only=page > 0,
++                bypass_cache=True
++            )
++
++            commits = json.loads(result.extracted_content)
++            all_commits.extend(commits)
++            print(f"Page {page + 1}: Found {len(commits)} commits")
++
++        await crawler.crawler_strategy.kill_session(session_id)
++        print(f"Successfully crawled {len(all_commits)} commits across 3 pages")
++
++asyncio.run(integrated_js_and_wait_crawl())
++
++This approach combines the JavaScript for clicking the "next" button and waiting for new content to load into a single script.
++Advanced Technique 3: Using the wait_for Parameter
++
++Crawl4AI provides a wait_for parameter that allows you to specify a condition to wait for before considering the page fully loaded. This can be particularly useful for dynamic content.
++
++Here's an example:
++
++async def wait_for_parameter_crawl():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        url = "https://github.com/example/repo/commits/main"
++        session_id = "wait_for_session"
++        all_commits = []
++
++        js_next_page = """
++        const commits = document.querySelectorAll('li.commit-item h4');
++        if (commits.length > 0) {
++            window.lastCommit = commits[0].textContent.trim();
++        }
++        const button = document.querySelector('a.pagination-next');
++        if (button) button.click();
++        """
++
++        wait_for = """() => {
++            const commits = document.querySelectorAll('li.commit-item h4');
++            if (commits.length === 0) return false;
++            const firstCommit = commits[0].textContent.trim();
++            return firstCommit !== window.lastCommit;
++        }"""
++
++        schema = {
++            "name": "Commit Extractor",
++            "baseSelector": "li.commit-item",
++            "fields": [
++                {
++                    "name": "title",
++                    "selector": "h4.commit-title",
++                    "type": "text",
++                    "transform": "strip",
++                },
++            ],
++        }
++        extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
++
++        for page in range(3):
++            result = await crawler.arun(
++                url=url,
++                session_id=session_id,
++                css_selector="li.commit-item",
++                extraction_strategy=extraction_strategy,
++                js_code=js_next_page if page > 0 else None,
++                wait_for=wait_for if page > 0 else None,
++                js_only=page > 0,
++                bypass_cache=True
++            )
++
++            commits = json.loads(result.extracted_content)
++            all_commits.extend(commits)
++            print(f"Page {page + 1}: Found {len(commits)} commits")
++
++        await crawler.crawler_strategy.kill_session(session_id)
++        print(f"Successfully crawled {len(all_commits)} commits across 3 pages")
++
++asyncio.run(wait_for_parameter_crawl())
++
++This technique separates the JavaScript execution (clicking the "next" button) from the waiting condition, providing more flexibility and clarity in some scenarios.
++Best Practices for Session-Based Crawling
++
++    Use Unique Session IDs: Ensure each crawling session has a unique session_id to prevent conflicts.
++    Close Sessions: Always close sessions using kill_session when you're done to free up resources.
++    Handle Errors: Implement proper error handling to deal with unexpected situations during crawling.
++    Respect Website Terms: Ensure your crawling adheres to the website's terms of service and robots.txt file.
++    Implement Delays: Add appropriate delays between requests to avoid overwhelming the target server.
++    Use Extraction Strategies: Leverage JsonCssExtractionStrategy or other extraction strategies for structured data extraction.
++    Optimize JavaScript: Keep your JavaScript execution concise and efficient to improve crawling speed.
++    Monitor Performance: Keep an eye on memory usage and crawling speed, especially for long-running sessions.
++
++Conclusion
++
++Session-based crawling with Crawl4AI provides powerful capabilities for handling dynamic content and complex web applications. By leveraging session management, JavaScript execution, and waiting strategies, you can effectively crawl and extract data from a wide range of modern websites.
++
++Remember to use these techniques responsibly and in compliance with website policies and ethical web scraping practices.
++
++For more advanced usage and API details, refer to the Crawl4AI API documentation.
++
+
+# 2024-10-03 12:43:35.872066
++s
+
+# 2024-10-03 12:44:30.152839
++
++Advanced Features
++
++Crawl4AI offers a range of advanced features that allow you to fine-tune your web crawling and data extraction process. This section will cover some of these advanced features, including taking screenshots, extracting media and links, customizing the user agent, using custom hooks, and leveraging CSS selectors.
++Taking Screenshots 📸
++
++One of the cool features of Crawl4AI is the ability to take screenshots of the web pages you're crawling. This can be particularly useful for visual verification or for capturing the state of dynamic content.
++
++Here's how you can take a screenshot:
++
++from crawl4ai import WebCrawler
++import base64
++
++# Create the WebCrawler instance
++crawler = WebCrawler()
++crawler.warmup()
++
++# Run the crawler with the screenshot parameter
++result = crawler.run(url="https://www.nbcnews.com/business", screenshot=True)
++
++# Save the screenshot to a file
++with open("screenshot.png", "wb") as f:
++    f.write(base64.b64decode(result.screenshot))
++
++print("Screenshot saved to 'screenshot.png'!")
++
++In this example, we create a WebCrawler instance, warm it up, and then run it with the screenshot parameter set to True. The screenshot is saved as a base64 encoded string in the result, which we then decode and save as a PNG file.
++Extracting Media and Links 🎨🔗
++
++Crawl4AI can extract all media tags (images, audio, and video) and links (both internal and external) from a web page. This feature is useful for collecting multimedia content or analyzing link structures.
++
++Here's an example:
++
++from crawl4ai import WebCrawler
++
++# Create the WebCrawler instance
++crawler = WebCrawler()
++crawler.warmup()
++
++# Run the crawler
++result = crawler.run(url="https://www.nbcnews.com/business")
++
++print("Extracted media:", result.media)
++print("Extracted links:", result.links)
++
++In this example, the result object contains dictionaries for media and links, which you can access and use as needed.
++Customizing the User Agent 🕵️‍♂️
++
++Crawl4AI allows you to set a custom user agent for your HTTP requests. This can help you avoid detection by web servers or simulate different browsing environments.
++
++Here's how to set a custom user agent:
++
++from crawl4ai import WebCrawler
++
++# Create the WebCrawler instance
++crawler = WebCrawler()
++crawler.warmup()
++
++# Run the crawler with a custom user agent
++result = crawler.run(url="https://www.nbcnews.com/business", user_agent="Mozilla/5.0 (compatible; MyCrawler/1.0)")
++
++print("Crawl result:", result)
++
++In this example, we specify a custom user agent string when running the crawler.
++Using Custom Hooks 🪝
++
++Hooks are a powerful feature in Crawl4AI that allow you to customize the crawling process at various stages. You can define hooks for actions such as driver initialization, before and after URL fetching, and before returning the HTML.
++
++Here's an example of using hooks:
++
++from crawl4ai import WebCrawler
++from selenium.webdriver.common.by import By
++from selenium.webdriver.support.ui import WebDriverWait
++from selenium.webdriver.support import expected_conditions as EC
++
++# Define the hooks
++def on_driver_created(driver):
++    driver.maximize_window()
++    driver.get('https://example.com/login')
++    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, 'username'))).send_keys('testuser')
++    driver.find_element(By.NAME, 'password').send_keys('password123')
++    driver.find_element(By.NAME, 'login').click()
++    return driver
++
++def before_get_url(driver):
++    driver.execute_cdp_cmd('Network.setExtraHTTPHeaders', {'headers': {'X-Test-Header': 'test'}})
++    return driver
++
++# Create the WebCrawler instance
++crawler = WebCrawler()
++crawler.warmup()
++
++# Set the hooks
++crawler.set_hook('on_driver_created', on_driver_created)
++crawler.set_hook('before_get_url', before_get_url)
++
++# Run the crawler
++result = crawler.run(url="https://example.com")
++
++print("Crawl result:", result)
++
++In this example, we define hooks to handle driver initialization and custom headers before fetching the URL.
++Using CSS Selectors 🎯
++
++CSS selectors allow you to target specific elements on a web page for extraction. This can be useful for scraping structured content, such as articles or product details.
++
++Here's an example of using a CSS selector:
++
++from crawl4ai import WebCrawler
++
++# Create the WebCrawler instance
++crawler = WebCrawler()
++crawler.warmup()
++
++# Run the crawler with a CSS selector to extract only H2 tags
++result = crawler.run(url="https://www.nbcnews.com/business", css_selector="h2")
++
++print("Extracted H2 tags:", result.extracted_content)
++
++In this example, we use the css_selector parameter to extract only the H2 tags from the web page.
++
++With these advanced features, you can leverage Crawl4AI to perform sophisticated web crawling and data extraction tasks. Whether you need to take screenshots, extract specific elements, customize the crawling process, or set custom headers, Crawl4AI provides the flexibility and power to meet your needs. Happy crawling! 🕷️🚀
++
+
+# 2024-10-03 12:44:31.280661
++s
+
+# 2024-10-03 12:45:38.110303
++
++Advanced Usage of JsonCssExtractionStrategy
++
++While the basic usage of JsonCssExtractionStrategy is powerful for simple structures, its true potential shines when dealing with complex, nested HTML structures. This section will explore advanced usage scenarios, demonstrating how to extract nested objects, lists, and nested lists.
++Hypothetical Website Example
++
++Let's consider a hypothetical e-commerce website that displays product categories, each containing multiple products. Each product has details, reviews, and related items. This complex structure will allow us to demonstrate various advanced features of JsonCssExtractionStrategy.
++
++Assume the HTML structure looks something like this:
++
++<div class="category">
++  <h2 class="category-name">Electronics</h2>
++  <div class="product">
++    <h3 class="product-name">Smartphone X</h3>
++    <p class="product-price">$999</p>
++    <div class="product-details">
++      <span class="brand">TechCorp</span>
++      <span class="model">X-2000</span>
++    </div>
++    <ul class="product-features">
++      <li>5G capable</li>
++      <li>6.5" OLED screen</li>
++      <li>128GB storage</li>
++    </ul>
++    <div class="product-reviews">
++      <div class="review">
++        <span class="reviewer">John D.</span>
++        <span class="rating">4.5</span>
++        <p class="review-text">Great phone, love the camera!</p>
++      </div>
++      <div class="review">
++        <span class="reviewer">Jane S.</span>
++        <span class="rating">5</span>
++        <p class="review-text">Best smartphone I've ever owned.</p>
++      </div>
++    </div>
++    <ul class="related-products">
++      <li>
++        <span class="related-name">Phone Case</span>
++        <span class="related-price">$29.99</span>
++      </li>
++      <li>
++        <span class="related-name">Screen Protector</span>
++        <span class="related-price">$9.99</span>
++      </li>
++    </ul>
++  </div>
++  <!-- More products... -->
++</div>
++
++Now, let's create a schema to extract this complex structure:
++
++schema = {
++    "name": "E-commerce Product Catalog",
++    "baseSelector": "div.category",
++    "fields": [
++        {
++            "name": "category_name",
++            "selector": "h2.category-name",
++            "type": "text"
++        },
++        {
++            "name": "products",
++            "selector": "div.product",
++            "type": "nested_list",
++            "fields": [
++                {
++                    "name": "name",
++                    "selector": "h3.product-name",
++                    "type": "text"
++                },
++                {
++                    "name": "price",
++                    "selector": "p.product-price",
++                    "type": "text"
++                },
++                {
++                    "name": "details",
++                    "selector": "div.product-details",
++                    "type": "nested",
++                    "fields": [
++                        {
++                            "name": "brand",
++                            "selector": "span.brand",
++                            "type": "text"
++                        },
++                        {
++                            "name": "model",
++                            "selector": "span.model",
++                            "type": "text"
++                        }
++                    ]
++                },
++                {
++                    "name": "features",
++                    "selector": "ul.product-features li",
++                    "type": "list",
++                    "fields": [
++                        {
++                            "name": "feature",
++                            "type": "text"
++                        }
++                    ]
++                },
++                {
++                    "name": "reviews",
++                    "selector": "div.review",
++                    "type": "nested_list",
++                    "fields": [
++                        {
++                            "name": "reviewer",
++                            "selector": "span.reviewer",
++                            "type": "text"
++                        },
++                        {
++                            "name": "rating",
++                            "selector": "span.rating",
++                            "type": "text"
++                        },
++                        {
++                            "name": "comment",
++                            "selector": "p.review-text",
++                            "type": "text"
++                        }
++                    ]
++                },
++                {
++                    "name": "related_products",
++                    "selector": "ul.related-products li",
++                    "type": "list",
++                    "fields": [
++                        {
++                            "name": "name",
++                            "selector": "span.related-name",
++                            "type": "text"
++                        },
++                        {
++                            "name": "price",
++                            "selector": "span.related-price",
++                            "type": "text"
++                        }
++                    ]
++                }
++            ]
++        }
++    ]
++}
++
++This schema demonstrates several advanced features:
++
++    Nested Objects: The details field is a nested object within each product.
++    Simple Lists: The features field is a simple list of text items.
++    Nested Lists: The products field is a nested list, where each item is a complex object.
++    Lists of Objects: The reviews and related_products fields are lists of objects.
++
++Let's break down the key concepts:
++Nested Objects
++
++To create a nested object, use "type": "nested" and provide a fields array for the nested structure:
++
++{
++    "name": "details",
++    "selector": "div.product-details",
++    "type": "nested",
++    "fields": [
++        {
++            "name": "brand",
++            "selector": "span.brand",
++            "type": "text"
++        },
++        {
++            "name": "model",
++            "selector": "span.model",
++            "type": "text"
++        }
++    ]
++}
++
++Simple Lists
++
++For a simple list of identical items, use "type": "list":
++
++{
++    "name": "features",
++    "selector": "ul.product-features li",
++    "type": "list",
++    "fields": [
++        {
++            "name": "feature",
++            "type": "text"
++        }
++    ]
++}
++
++Nested Lists
++
++For a list of complex objects, use "type": "nested_list":
++
++{
++    "name": "products",
++    "selector": "div.product",
++    "type": "nested_list",
++    "fields": [
++        // ... fields for each product
++    ]
++}
++
++Lists of Objects
++
++Similar to nested lists, but typically used for simpler objects within the list:
++
++{
++    "name": "related_products",
++    "selector": "ul.related-products li",
++    "type": "list",
++    "fields": [
++        {
++            "name": "name",
++            "selector": "span.related-name",
++            "type": "text"
++        },
++        {
++            "name": "price",
++            "selector": "span.related-price",
++            "type": "text"
++        }
++    ]
++}
++
++Using the Advanced Schema
++
++To use this advanced schema with AsyncWebCrawler:
++
++import json
++import asyncio
++from crawl4ai import AsyncWebCrawler
++from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
++
++async def extract_complex_product_data():
++    extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
++
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        result = await crawler.arun(
++            url="https://gist.githubusercontent.com/githubusercontent/2d7b8ba3cd8ab6cf3c8da771ddb36878/raw/1ae2f90c6861ce7dd84cc50d3df9920dee5e1fd2/sample_ecommerce.html",
++            extraction_strategy=extraction_strategy,
++            bypass_cache=True,
++        )
++
++        assert result.success, "Failed to crawl the page"
++
++        product_data = json.loads(result.extracted_content)
++        print(json.dumps(product_data, indent=2))
++
++asyncio.run(extract_complex_product_data())
++
++This will produce a structured JSON output that captures the complex hierarchy of the product catalog, including nested objects, lists, and nested lists.
++Tips for Advanced Usage
++
++    Start Simple: Begin with a basic schema and gradually add complexity.
++    Test Incrementally: Test each part of your schema separately before combining them.
++    Use Chrome DevTools: The Element Inspector is invaluable for identifying the correct selectors.
++    Handle Missing Data: Use the default key in your field definitions to handle cases where data might be missing.
++    Leverage Transforms: Use the transform key to clean or format extracted data (e.g., converting prices to numbers).
++    Consider Performance: Very complex schemas might slow down extraction. Balance complexity with performance needs.
++
++By mastering these advanced techniques, you can use JsonCssExtractionStrategy to extract highly structured data from even the most complex web pages, making it a powerful tool for web scraping and data analysis tasks.
++
+
+# 2024-10-03 12:45:39.753646
++s
+
+# 2024-10-03 12:45:40.882677
++n
+
+# 2024-10-03 12:46:33.490158
++
++Chunking Strategies 📚
++
++Crawl4AI provides several powerful chunking strategies to divide text into manageable parts for further processing. Each strategy has unique characteristics and is suitable for different scenarios. Let's explore them one by one.
++RegexChunking
++
++RegexChunking splits text using regular expressions. This is ideal for creating chunks based on specific patterns like paragraphs or sentences.
++When to Use
++
++    Great for structured text with consistent delimiters.
++    Suitable for documents where specific patterns (e.g., double newlines, periods) indicate logical chunks.
++
++Parameters
++
++    patterns (list, optional): Regular expressions used to split the text. Default is to split by double newlines (['\n\n']).
++
++Example
++
++from crawl4ai.chunking_strategy import RegexChunking
++
++# Define patterns for splitting text
++patterns = [r'\n\n', r'\. ']
++chunker = RegexChunking(patterns=patterns)
++
++# Sample text
++text = "This is a sample text. It will be split into chunks.\n\nThis is another paragraph."
++
++# Chunk the text
++chunks = chunker.chunk(text)
++print(chunks)
++
++NlpSentenceChunking
++
++NlpSentenceChunking uses NLP models to split text into sentences, ensuring accurate sentence boundaries.
++When to Use
++
++    Ideal for texts where sentence boundaries are crucial.
++    Useful for creating chunks that preserve grammatical structures.
++
++Parameters
++
++    None.
++
++Example
++
++from crawl4ai.chunking_strategy import NlpSentenceChunking
++
++chunker = NlpSentenceChunking()
++
++# Sample text
++text = "This is a sample text. It will be split into sentences. Here's another sentence."
++
++# Chunk the text
++chunks = chunker.chunk(text)
++print(chunks)
++
++TopicSegmentationChunking
++
++TopicSegmentationChunking employs the TextTiling algorithm to segment text into topic-based chunks. This method identifies thematic boundaries.
++When to Use
++
++    Perfect for long documents with distinct topics.
++    Useful when preserving topic continuity is more important than maintaining text order.
++
++Parameters
++
++    num_keywords (int, optional): Number of keywords for each topic segment. Default is 3.
++
++Example
++
++from crawl4ai.chunking_strategy import TopicSegmentationChunking
++
++chunker = TopicSegmentationChunking(num_keywords=3)
++
++# Sample text
++text = "This document contains several topics. Topic one discusses AI. Topic two covers machine learning."
++
++# Chunk the text
++chunks = chunker.chunk(text)
++print(chunks)
++
++FixedLengthWordChunking
++
++FixedLengthWordChunking splits text into chunks based on a fixed number of words. This ensures each chunk has approximately the same length.
++When to Use
++
++    Suitable for processing large texts where uniform chunk size is important.
++    Useful when the number of words per chunk needs to be controlled.
++
++Parameters
++
++    chunk_size (int, optional): Number of words per chunk. Default is 100.
++
++Example
++
++from crawl4ai.chunking_strategy import FixedLengthWordChunking
++
++chunker = FixedLengthWordChunking(chunk_size=10)
++
++# Sample text
++text = "This is a sample text. It will be split into chunks of fixed length."
++
++# Chunk the text
++chunks = chunker.chunk(text)
++print(chunks)
++
++SlidingWindowChunking
++
++SlidingWindowChunking uses a sliding window approach to create overlapping chunks. Each chunk has a fixed length, and the window slides by a specified step size.
++When to Use
++
++    Ideal for creating overlapping chunks to preserve context.
++    Useful for tasks where context from adjacent chunks is needed.
++
++Parameters
++
++    window_size (int, optional): Number of words in each chunk. Default is 100.
++    step (int, optional): Number of words to slide the window. Default is 50.
++
++Example
++
++from crawl4ai.chunking_strategy import SlidingWindowChunking
++
++chunker = SlidingWindowChunking(window_size=10, step=5)
++
++# Sample text
++text = "This is a sample text. It will be split using a sliding window approach to preserve context."
++
++# Chunk the text
++chunks = chunker.chunk(text)
++print(chunks)
++
++With these chunking strategies, you can choose the best method to divide your text based on your specific needs. Whether you need precise sentence boundaries, topic-based segmentation, or uniform chunk sizes, Crawl4AI has you covered. Happy chunking! 📝✨
++
+
+# 2024-10-03 12:47:23.066182
++
++Extraction Strategies 🧠
++
++Crawl4AI offers powerful extraction strategies to derive meaningful information from web content. Let's dive into three of the most important strategies: CosineStrategy, LLMExtractionStrategy, and the new JsonCssExtractionStrategy.
++LLMExtractionStrategy
++
++LLMExtractionStrategy leverages a Language Model (LLM) to extract meaningful content from HTML. This strategy uses an external provider for LLM completions to perform extraction based on instructions.
++When to Use
++
++    Suitable for complex extraction tasks requiring nuanced understanding.
++    Ideal for scenarios where detailed instructions can guide the extraction process.
++    Perfect for extracting specific types of information or content with precise guidelines.
++
++Parameters
++
++    provider (str, optional): Provider for language model completions (e.g., openai/gpt-4). Default is DEFAULT_PROVIDER.
++    api_token (str, optional): API token for the provider. If not provided, it will try to load from the environment variable OPENAI_API_KEY.
++    instruction (str, optional): Instructions to guide the LLM on how to perform the extraction. Default is None.
++
++Example Without Instructions
++
++import asyncio
++import os
++from crawl4ai import AsyncWebCrawler
++from crawl4ai.extraction_strategy import LLMExtractionStrategy
++
++async def main():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        # Define extraction strategy without instructions
++        strategy = LLMExtractionStrategy(
++            provider='openai',
++            api_token=os.getenv('OPENAI_API_KEY')
++        )
++
++        # Sample URL
++        url = "https://www.nbcnews.com/business"
++
++        # Run the crawler with the extraction strategy
++        result = await crawler.arun(url=url, extraction_strategy=strategy)
++        print(result.extracted_content)
++
++asyncio.run(main())
++
++Example With Instructions
++
++import asyncio
++import os
++from crawl4ai import AsyncWebCrawler
++from crawl4ai.extraction_strategy import LLMExtractionStrategy
++
++async def main():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        # Define extraction strategy with instructions
++        strategy = LLMExtractionStrategy(
++            provider='openai',
++            api_token=os.getenv('OPENAI_API_KEY'),
++            instruction="Extract only financial news and summarize key points."
++        )
++
++        # Sample URL
++        url = "https://www.nbcnews.com/business"
++
++        # Run the crawler with the extraction strategy
++        result = await crawler.arun(url=url, extraction_strategy=strategy)
++        print(result.extracted_content)
++
++asyncio.run(main())
++
++JsonCssExtractionStrategy
++
++JsonCssExtractionStrategy is a powerful tool for extracting structured data from HTML using CSS selectors. It allows you to define a schema that maps CSS selectors to specific fields, enabling precise and efficient data extraction.
++When to Use
++
++    Ideal for extracting structured data from websites with consistent HTML structures.
++    Perfect for scenarios where you need to extract specific elements or attributes from a webpage.
++    Suitable for creating datasets from web pages with tabular or list-based information.
++
++Parameters
++
++    schema (Dict[str, Any]): A dictionary defining the extraction schema, including base selector and field definitions.
++
++Example
++
++import asyncio
++import json
++from crawl4ai import AsyncWebCrawler
++from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
++
++async def main():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        # Define the extraction schema
++        schema = {
++            "name": "News Articles",
++            "baseSelector": "article.tease-card",
++            "fields": [
++                {
++                    "name": "title",
++                    "selector": "h2",
++                    "type": "text",
++                },
++                {
++                    "name": "summary",
++                    "selector": "div.tease-card__info",
++                    "type": "text",
++                },
++                {
++                    "name": "link",
++                    "selector": "a",
++                    "type": "attribute",
++                    "attribute": "href"
++                }
++            ],
++        }
++
++        # Create the extraction strategy
++        strategy = JsonCssExtractionStrategy(schema, verbose=True)
++
++        # Sample URL
++        url = "https://www.nbcnews.com/business"
++
++        # Run the crawler with the extraction strategy
++        result = await crawler.arun(url=url, extraction_strategy=strategy)
++
++        # Parse and print the extracted content
++        extracted_data = json.loads(result.extracted_content)
++        print(json.dumps(extracted_data, indent=2))
++
++asyncio.run(main())
++
++Use Cases for JsonCssExtractionStrategy
++
++    Extracting product information from e-commerce websites.
++    Gathering news articles and their metadata from news portals.
++    Collecting user reviews and ratings from review websites.
++    Extracting job listings from job boards.
++
++By choosing the right extraction strategy, you can effectively extract the most relevant and useful information from web content. Whether you need fast, accurate semantic segmentation with CosineStrategy, nuanced, instruction-based extraction with LLMExtractionStrategy, or precise structured data extraction with JsonCssExtractionStrategy, Crawl4AI has you covered. Happy extracting! 🕵️‍♂️✨
++
++For more details on schema definitions and advanced extraction strategies, check out theAdvanced JsonCssExtraction.
++CosineStrategy
++
++CosineStrategy uses hierarchical clustering based on cosine similarity to group text chunks into meaningful clusters. This method converts each chunk into its embedding and then clusters them to form semantical chunks.
++When to Use
++
++    Ideal for fast, accurate semantic segmentation of text.
++    Perfect for scenarios where LLMs might be overkill or too slow.
++    Suitable for narrowing down content based on specific queries or keywords.
++
++Parameters
++
++    semantic_filter (str, optional): Keywords for filtering relevant documents before clustering. Documents are filtered based on their cosine similarity to the keyword filter embedding. Default is None.
++    word_count_threshold (int, optional): Minimum number of words per cluster. Default is 20.
++    max_dist (float, optional): Maximum cophenetic distance on the dendrogram to form clusters. Default is 0.2.
++    linkage_method (str, optional): Linkage method for hierarchical clustering. Default is 'ward'.
++    top_k (int, optional): Number of top categories to extract. Default is 3.
++    model_name (str, optional): Model name for embedding generation. Default is 'BAAI/bge-small-en-v1.5'.
++
++Example
++
++import asyncio
++from crawl4ai import AsyncWebCrawler
++from crawl4ai.extraction_strategy import CosineStrategy
++
++async def main():
++    async with AsyncWebCrawler(verbose=True) as crawler:
++        # Define extraction strategy
++        strategy = CosineStrategy(
++            semantic_filter="finance economy stock market",
++            word_count_threshold=10,
++            max_dist=0.2,
++            linkage_method='ward',
++            top_k=3,
++            model_name='BAAI/bge-small-en-v1.5'
++        )
++
++        # Sample URL
++        url = "https://www.nbcnews.com/business"
++
++        # Run the crawler with the extraction strategy
++        result = await crawler.arun(url=url, extraction_strategy=strategy)
++        print(result.extracted_content)
++
++asyncio.run(main())
++
++
+
+# 2024-10-03 12:48:48.022998
++update ther README.md
+
+# 2024-10-03 12:50:11.522128
++retry again
+
+# 2024-10-03 12:50:33.710300
++try again
+
+# 2024-10-03 12:52:14.353060
++n
+
+# 2024-10-03 12:52:18.058711
++instllation is pip install crawl4ai[all]
+
+# 2024-10-03 12:52:33.121684
++also this crawl4ai-download-models
+
+# 2024-10-03 12:52:45.123835
++add this in the readme
+
+# 2024-10-03 12:53:20.106088
++installation is first pip install crawl4ai[all] then this crawl4ai-download-models. but first create a venv
+
+# 2024-10-03 12:53:46.809757
++n
+
+# 2024-10-03 12:53:56.961073
++api key shouldbe set by set or setx on windows
+
+# 2024-10-03 12:54:12.366438
++n
+
+# 2024-10-03 12:54:20.954418
++update commands for mac and linux
+
+# 2024-10-03 12:54:37.759855
++n
+
+# 2024-10-03 12:54:56.438759
++create a requirements txt without version numbers and update the readme
+
+# 2024-10-03 12:55:13.909721
++n
+
+# 2024-10-03 12:56:51.946174
++this is not needed evelopment Guidelines
++SEARCH/REPLACE Block Rules
++
++When contributing code changes, please follow these rules for SEARCH/REPLACE blocks:
++
++    The FULL file path alone on a line, verbatim. No bold asterisks, no quotes around it, no escaping of characters, etc.
++    The opening fence and code language, e.g., python
++    The start of search block: <<<<<<< SEARCH
++    A contiguous chunk of lines to search for in the existing source code
++    The dividing line: =======
++    The lines to replace into the source code
++    The end of the replace block: >>>>>>> REPLACE
++    The closing fence:
++
++    Use the FULL file path, as shown by the maintainer.
++    Every SEARCH section must EXACTLY MATCH the existing file content, character for character, including all comments, docstrings, etc.
++    SEARCH/REPLACE blocks will replace ALL matching occurrences.
++    Include enough lines to make the SEARCH blocks uniquely match the lines to change.
++    Keep SEARCH/REPLACE blocks concise.
++    Break large SEARCH/REPLACE blocks into a series of smaller blocks that each change a small portion of the file.
++    Include just the changing lines, and a few surrounding lines if needed for uniqueness.
++    Do not include long runs of unchanging lines in SEARCH/REPLACE blocks.
++    Only create SEARCH/REPLACE blocks for files that have been explicitly added to the discussion.
++    To move code within a file, use 2 SEARCH/REPLACE blocks: 1 to delete it from its current location, 1 to insert it in the new location.
++    Pay attention to which filenames are intended for editing, especially when creating new files.
++    For new files, use a SEARCH/REPLACE block with an empty SEARCH section and the new file's contents in the REPLACE section.
++
++Remember: ONLY EVER RETURN CODE IN A SEARCH/REPLACE BLOCK!
++
++For file system operations like renaming files, use appropriate shell commands at the end of your response.
+
+# 2024-10-03 12:57:34.671815
++it's not written how to start the script
+
+# 2024-10-03 12:58:31.876643
++n
+
+# 2024-10-03 12:58:37.317590
++/add "G:\Github\Crawler\templates"
++"G:\Github\Crawler\app.py"
++"G:\Github\Crawler\crawler.py"
++"G:\Github\Crawler\models.py"
++"G:\Github\Crawler\README.md"
++"G:\Github\Crawler\requirements.txt"
++"G:\Github\Crawler\utils.py"
++"G:\Github\Crawler\web_crawler.py"
+
+# 2024-10-03 12:58:42.929575
++there is no main.py
+
+# 2024-10-03 12:59:01.513989
++n
+
+# 2024-10-03 12:59:11.968827
++pls check the other files if they are using main
+
+# 2024-10-03 12:59:31.911042
++n
+
+# 2024-10-03 12:59:48.972345
++(crawl4ai_env) G:\Github\Crawler>python main.py
++C:\Users\pierr\AppData\Local\Programs\Python\Python311\python.exe: can't open file 'G:\\Github\\Crawler\\main.py': [Errno 2] No such file or directory
++
++(crawl4ai_env) G:\Github\Crawler>python main.py
++[LOG] 🚀 Initializing LocalSeleniumCrawlerStrategy
++
++DevTools listening on ws://127.0.0.1:53485/devtools/browser/cd3df516-738d-451d-9ee3-16ae574f7ccd
++Traceback (most recent call last):
++  File "G:\Github\Crawler\main.py", line 10, in <module>
++    asyncio.run(main())
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
++    return runner.run(main)
++           ^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
++    return self._loop.run_until_complete(task)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 650, in run_until_complete
++    return future.result()
++           ^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\main.py", line 6, in main
++    result = await crawler.basic_crawl("https://example.com")
++                   ^^^^^^^^^^^^^^^^^^^
++AttributeError: 'WebCrawler' object has no attribute 'basic_crawl'
++
++(crawl4ai_env) G:\Github\Crawler>
++
+
+# 2024-10-03 13:00:30.598645
++make the main the starting script wich uses the other files
+
+# 2024-10-03 13:02:04.061186
++s
+
+# 2024-10-03 13:02:08.096486
++pls remove "G:\Github\Crawler\web_crawler.py"
+
+# 2024-10-03 13:02:14.759347
++/run del "G:\Github\Crawler\web_crawler.py"
+
+# 2024-10-03 13:02:18.428027
++update git
+
+# 2024-10-03 13:02:25.861937
++/run git rm "G:\Github\Crawler\web_crawler.py"
+
+# 2024-10-03 13:02:29.762502
++/run git commit -m "Remove web_crawler.py file"
+
+# 2024-10-03 13:02:33.234722
++/run git push origin main
+
+# 2024-10-03 13:02:36.947859
++n
+
+# 2024-10-03 13:02:58.963715
++(crawl4ai_env) G:\Github\Crawler>python main.py
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://example.com using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://example.com/
++[HOOK] before_return_html
++HTML length: 1248
++[LOG] ✅ Crawled https://example.com successfully!
++[LOG] 🚀 Crawling done for https://example.com, success: True, time taken: 3.30 seconds
++[LOG] 🚀 Content extracted for https://example.com, success: True, time taken: 0.00 seconds
++[LOG] 🔥 Extracting semantic blocks for https://example.com, Strategy: AsyncWebCrawler
++[LOG] 🚀 Extraction done for https://example.com, time taken: 0.00 seconds.
++Sample crawl result: {'extracted_content': '[\n    {\n        "index": 0,\n        "tags": [],\n        "content": "# Example Domain"\n    },\n    {\n        "index": 1,\n        "tags": [],\n        "content": "This domain is for use in illustrative examples in documents. You may use this\\ndomain in literature without prior coordination or asking for permission."\n    },\n    {\n        "index": 2,\n        "tags": [],\n        "content": "More information..."\n    },\n    {\n        "index": 3,\n        "tags": [],\n        "content": ""\n    }\n]', 'html_length': 1248, 'url': 'https://example.com', 'screenshot': None}
++ * Serving Flask app 'app'
++ * Debug mode: on
++WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
++ * Running on http://127.0.0.1:5000
++Press CTRL+C to quit
++ * Restarting with stat
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🚀 Content extracted for https://example.com, success: True, time taken: 0.00 seconds
++[LOG] 🚀 Extraction done for https://example.com, time taken: 0.00 seconds.
++Sample crawl result: {'extracted_content': '[\n    {\n        "index": 0,\n        "tags": [],\n        "content": "# Example Domain"\n    },\n    {\n        "index": 1,\n        "tags": [],\n        "content": "This domain is for use in illustrative examples in documents. You may use this\\ndomain in literature without prior coordination or asking for permission."\n    },\n    {\n        "index": 2,\n        "tags": [],\n        "content": "More information..."\n    },\n    {\n        "index": 3,\n        "tags": [],\n        "content": ""\n    }\n]', 'html_length': 1248, 'url': 'https://example.com', 'screenshot': None}
++ * Debugger is active!
++ * Debugger PIN: 613-811-454
+
+# 2024-10-03 13:03:00.867917
++s
+
+# 2024-10-03 13:03:23.987655
++n
+
+# 2024-10-03 13:04:25.303631
++Starting Flask application...
++ * Debugger is active!
++ * Debugger PIN: 613-811-454
++127.0.0.1 - - [03/Oct/2024 13:03:43] "GET / HTTP/1.1" 200 -
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🕸️ Crawling https://google.com/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://www.google.com/
++[HOOK] before_return_html
++HTML length: 284958
++[LOG] ✅ Crawled https://google.com/ successfully!
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.31 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🔥 Extracting semantic blocks for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, Strategy: AsyncWebCrawler
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.47 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.45 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++127.0.0.1 - - [03/Oct/2024 13:04:15] "POST /crawl HTTP/1.1" 500 -
++Traceback (most recent call last):
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 114, in __call__
++    result = await fn(*args, **kwargs)
++             ^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawler.py", line 132, in take_screenshot
++    return base64.b64encode(result.screenshot).decode('utf-8')
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\base64.py", line 58, in b64encode
++    encoded = binascii.b2a_base64(s, newline=False)
++              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++TypeError: a bytes-like object is required, not 'NoneType'
++
++The above exception was the direct cause of the following exception:
++
++Traceback (most recent call last):
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1498, in __call__
++    return self.wsgi_app(environ, start_response)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1476, in wsgi_app
++    response = self.handle_exception(e)
++               ^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
++    response = self.full_dispatch_request()
++               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
++    rv = self.handle_user_exception(e)
++         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
++    rv = self.dispatch_request()
++         ^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 865, in dispatch_request
++    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\app.py", line 20, in crawl
++    result = asyncio.run(crawler.take_screenshot(url))
++             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
++    return runner.run(main)
++           ^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
++    return self._loop.run_until_complete(task)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 650, in run_until_complete
++    return future.result()
++           ^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 189, in async_wrapped
++    return await copy(fn, *args, **kwargs)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 111, in __call__
++    do = await self.iter(retry_state=retry_state)
++         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 153, in iter
++    result = await action(retry_state)
++             ^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\_utils.py", line 99, in inner
++    return call(*args, **kwargs)
++           ^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\__init__.py", line 419, in exc_check
++    raise retry_exc from fut.exception()
++tenacity.RetryError: RetryError[<Future at 0x23297c44850 state=finished raised TypeError>]
+
+# 2024-10-03 13:04:29.315436
++s
+
+# 2024-10-03 13:04:34.301109
++Starting Flask application...
++ * Debugger is active!
++ * Debugger PIN: 613-811-454
++127.0.0.1 - - [03/Oct/2024 13:03:43] "GET / HTTP/1.1" 200 -
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🕸️ Crawling https://google.com/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://www.google.com/
++[HOOK] before_return_html
++HTML length: 284958
++[LOG] ✅ Crawled https://google.com/ successfully!
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.31 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🔥 Extracting semantic blocks for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, Strategy: AsyncWebCrawler
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.47 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++[HOOK] on_browser_created
++[LOG] 🌤️  Warming up the AsyncWebCrawler
++[LOG] 🌞 AsyncWebCrawler is ready to crawl
++[LOG] 🕸️ Crawling https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ using AsyncPlaywrightCrawlerStrategy...
++[HOOK] before_goto
++[HOOK] after_goto
++Current URL: https://crawl4ai.com/mkdocs/full_details/extraction_strategies/
++[HOOK] before_return_html
++HTML length: 26498
++[LOG] ✅ Crawled https://crawl4ai.com/mkdocs/full_details/extraction_strategies/ successfully!
++[LOG] 🚀 Crawling done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 2.45 seconds
++[LOG] 🚀 Content extracted for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, success: True, time taken: 0.02 seconds
++[LOG] 🚀 Extraction done for https://crawl4ai.com/mkdocs/full_details/extraction_strategies/, time taken: 0.02 seconds.
++127.0.0.1 - - [03/Oct/2024 13:04:15] "POST /crawl HTTP/1.1" 500 -
++Traceback (most recent call last):
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 114, in __call__
++    result = await fn(*args, **kwargs)
++             ^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawler.py", line 132, in take_screenshot
++    return base64.b64encode(result.screenshot).decode('utf-8')
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\base64.py", line 58, in b64encode
++    encoded = binascii.b2a_base64(s, newline=False)
++              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++TypeError: a bytes-like object is required, not 'NoneType'
++
++The above exception was the direct cause of the following exception:
++
++Traceback (most recent call last):
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1498, in __call__
++    return self.wsgi_app(environ, start_response)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1476, in wsgi_app
++    response = self.handle_exception(e)
++               ^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
++    response = self.full_dispatch_request()
++               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
++    rv = self.handle_user_exception(e)
++         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
++    rv = self.dispatch_request()
++         ^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\flask\app.py", line 865, in dispatch_request
++    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\app.py", line 20, in crawl
++    result = asyncio.run(crawler.take_screenshot(url))
++             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
++    return runner.run(main)
++           ^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
++    return self._loop.run_until_complete(task)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "C:\Users\pierr\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 650, in run_until_complete
++    return future.result()
++           ^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 189, in async_wrapped
++    return await copy(fn, *args, **kwargs)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 111, in __call__
++    do = await self.iter(retry_state=retry_state)
++         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\asyncio\__init__.py", line 153, in iter
++    result = await action(retry_state)
++             ^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\_utils.py", line 99, in inner
++    return call(*args, **kwargs)
++           ^^^^^^^^^^^^^^^^^^^^^
++  File "G:\Github\Crawler\crawl4ai_env\Lib\site-packages\tenacity\__init__.py", line 419, in exc_check
++    raise retry_exc from fut.exception()
++tenacity.RetryError: RetryError[<Future at 0x23297c44850 state=finished raised TypeError>]
+
+# 2024-10-03 13:04:37.094713
++n

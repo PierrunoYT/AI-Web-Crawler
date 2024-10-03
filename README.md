@@ -1,6 +1,6 @@
-# Crawl4AI: Advanced Web Crawling and Data Extraction Library
+# AIWebCrawler: Advanced Web Crawling and Data Extraction Library
 
-Crawl4AI is a powerful and versatile Python library for web crawling, data extraction, and content analysis. It provides a wide range of features to handle various web scraping scenarios, from basic crawling to advanced session-based extractions and AI-powered content analysis.
+AIWebCrawler is a powerful and versatile Python library for web crawling, data extraction, and content analysis. It provides a wide range of features to handle various web scraping scenarios, from basic crawling to advanced session-based extractions and AI-powered content analysis.
 
 ## Features
 
@@ -25,17 +25,17 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
 
 1. Create a virtual environment:
    ```bash
-   python -m venv crawl4ai_env
+   python -m venv aiwebcrawler_env
    ```
 
 2. Activate the virtual environment:
    - On Windows:
      ```bash
-     crawl4ai_env\Scripts\activate
+     aiwebcrawler_env\Scripts\activate
      ```
    - On macOS and Linux:
      ```bash
-     source crawl4ai_env/bin/activate
+     source aiwebcrawler_env/bin/activate
      ```
 
 3. Install requirements:
@@ -43,14 +43,14 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
    pip install -r requirements.txt
    ```
 
-4. Install Crawl4AI:
+4. Install AIWebCrawler:
    ```bash
-   pip install crawl4ai[all]
+   pip install aiwebcrawler[all]
    ```
 
 5. Download required models:
    ```bash
-   crawl4ai-download-models
+   aiwebcrawler-download-models
    ```
 
 Note: The `requirements.txt` file includes the necessary dependencies for the project. If you prefer to install dependencies manually or want more control over the versions, you can install them individually instead of using the requirements file.
@@ -58,7 +58,7 @@ Note: The `requirements.txt` file includes the necessary dependencies for the pr
 ## Quick Start
 
 ```python
-from crawl4ai import WebCrawler
+from aiwebcrawler import WebCrawler
 
 async def main():
     crawler = WebCrawler()
@@ -78,7 +78,7 @@ To run the script, follow these steps:
 2. Create a new Python file, for example `main.py`, and paste the following code:
 
    ```python
-   from crawl4ai import WebCrawler
+   from aiwebcrawler import WebCrawler
    import asyncio
 
    async def main():
@@ -161,7 +161,7 @@ asyncio.run(advanced_session_crawl())
 
 ## Configuration
 
-Crawl4AI can be configured using environment variables:
+AIWebCrawler can be configured using environment variables:
 
 On Windows, you can set these variables using the `set` or `setx` commands:
 
@@ -195,13 +195,12 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## License
 
-Crawl4AI is released under the [MIT License](LICENSE).
+AIWebCrawler is released under the [MIT License](LICENSE).
 
 ## Documentation
 
-For full documentation, visit [https://crawl4ai.readthedocs.io](https://crawl4ai.readthedocs.io).
+For full documentation, visit [https://aiwebcrawler.readthedocs.io](https://aiwebcrawler.readthedocs.io).
 
 ## Support
 
-For questions and support, please open an issue on our [GitHub repository](https://github.com/yourusername/crawl4ai/issues).
-
+For questions and support, please open an issue on our [GitHub repository](https://github.com/yourusername/aiwebcrawler/issues).
