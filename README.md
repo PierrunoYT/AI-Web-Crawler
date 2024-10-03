@@ -22,6 +22,29 @@ This project is a versatile web crawler with various functionalities, including 
    - `OPENAI_API_KEY`: Your OpenAI API key
    - `GROQ_API_KEY`: Your Groq API key
 
+   ### Setting Environment Variables
+
+   #### Windows
+   Using Command Prompt:
+   ```
+   set OPENAI_API_KEY=your_openai_api_key_here
+   set GROQ_API_KEY=your_groq_api_key_here
+   ```
+   Or to set them permanently:
+   ```
+   setx OPENAI_API_KEY your_openai_api_key_here
+   setx GROQ_API_KEY your_groq_api_key_here
+   ```
+   Note: After using `setx`, you'll need to restart your command prompt for the changes to take effect.
+
+   #### macOS and Linux
+   In Terminal:
+   ```
+   export OPENAI_API_KEY=your_openai_api_key_here
+   export GROQ_API_KEY=your_groq_api_key_here
+   ```
+   To make these permanent, add these lines to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
+
 ## Virtual Environment Setup
 
 ### Windows
