@@ -3,7 +3,7 @@ import asyncio
 
 async def main():
     crawler = WebCrawler()
-    result = await crawler.basic_crawl("https://example.com")
+    result = await crawler.advanced_configurable_crawl("https://example.com")
     print(result)
 
 if __name__ == "__main__":
