@@ -23,9 +23,30 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
 
 ## Installation
 
-```bash
-pip install crawl4ai[all]
-```
+1. Create a virtual environment:
+   ```bash
+   python -m venv crawl4ai_env
+   ```
+
+2. Activate the virtual environment:
+   - On Windows:
+     ```bash
+     crawl4ai_env\Scripts\activate
+     ```
+   - On macOS and Linux:
+     ```bash
+     source crawl4ai_env/bin/activate
+     ```
+
+3. Install Crawl4AI:
+   ```bash
+   pip install crawl4ai[all]
+   ```
+
+4. Download required models:
+   ```bash
+   crawl4ai-download-models
+   ```
 
 ## Quick Start
 
