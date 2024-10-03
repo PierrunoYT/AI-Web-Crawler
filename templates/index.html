@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Crawler UI</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+        h1 { color: #333; }
+        input, select, button { margin: 10px 0; padding: 5px; }
+        #result { margin-top: 20px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Web Crawler UI</h1>
+    <input type="text" id="url" placeholder="Enter URL to crawl">
+    <select id="crawlType">
+        <option value="basic">Basic Crawl</option>
+        <option value="screenshot">Take Screenshot</option>
+        <option value="chunked">Chunked Crawl</option>
+        <option value="structured">Extract Structured Data</option>
+        <option value="llm">LLM Extraction</option>
+        <option value="advanced">Advanced Crawl</option>
+        <option value="custom_session">Custom Session Crawl</option>
+        <option value="summarize">Summarize Page</option>
+        <option value="summarize_multiple">Summarize Multiple Pages</option>
+        <option value="research_assistant">Research Assistant</option>
+    </select>
+    <button onclick="crawl()">Crawl</button>
+    <div id="multipleUrls" style="display: none;">
+        <textarea id="urlList" rows="5" cols="50" placeholder="Enter URLs, one per line"></textarea>
+    </div>
+    <div id="researchAssistant" style="display: none;">
+        <textarea id="userMessage" rows="5" cols="50" placeholder="Enter your question or message"></textarea>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        $('#crawlType').change(function() {
+            if ($(this).val() === 'summarize_multiple') {
+                $('#multipleUrls').show();
+                $('#url').hide();
+                $('#researchAssistant').hide();
+            } else if ($(this).val() === 'research_assistant') {
+                $('#researchAssistant').show();
+                $('#url').hide();
+                $('#multipleUrls').hide();
+            } else {
+                $('#multipleUrls').hide();
+                $('#researchAssistant').hide();
+                $('#url').show();
+            }
+        });
+
+        let context = {};
+
+        function crawl() {
+            const type = $('#crawlType').val();
+            let url = $('#url').val();
+            let data = { type: type };
+
+            if (type === 'summarize_multiple') {
+                const urls = $('#urlList').val().split('\n').filter(u => u.trim() !== '');
+                data.urls = urls;
+            } else if (type === 'research_assistant') {
+                data.message = $('#userMessage').val();
+                data.context = JSON.stringify(context);
+            } else {
+                data.url = url;
+            }
+            
+            $.post('/crawl', data, function(response) {
+                if (type === 'screenshot') {
+                    $('#result').html(`<img src="data:image/png;base64,${response.result}" alt="Screenshot" style="max-width: 100%;">`);
+                } else if (type === 'research_assistant') {
+                    $('#result').text(response.result);
+                    // Update context with new information
+                    const newUrls = extract_urls(response.result);
+                    newUrls.forEach((url, index) => {
+                        context[`REF_${Object.keys(context).length + 1}`] = {
+                            url: url,
+                            content: `Content from ${url}`
+                        };
+                    });
+                } else {
+                    $('#result').text(JSON.stringify(response.result, null, 2));
+                }
+            });
+        }
+
+        function extract_urls(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.match(urlRegex) || [];
+        }
+    </script>
+</body>
+</html>
