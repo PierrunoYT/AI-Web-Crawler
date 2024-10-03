@@ -125,7 +125,9 @@ asyncio.run(advanced_session_crawl())
 
 ## Configuration
 
-Crawl4AI can be configured using environment variables. On Windows, you can set these variables using the `set` or `setx` commands:
+Crawl4AI can be configured using environment variables:
+
+On Windows, you can set these variables using the `set` or `setx` commands:
 
 ```
 set OPENAI_API_KEY=your_openai_api_key
@@ -137,6 +139,13 @@ Or for persistent settings:
 ```
 setx OPENAI_API_KEY your_openai_api_key
 setx GROQ_API_KEY your_groq_api_key
+```
+
+On macOS and Linux, you can set these variables in your shell configuration file (e.g., `.bashrc`, `.zshrc`):
+
+```
+export OPENAI_API_KEY=your_openai_api_key
+export GROQ_API_KEY=your_groq_api_key
 ```
 
 The required environment variables are:
