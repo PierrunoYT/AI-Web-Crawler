@@ -91,6 +91,10 @@ class WebCrawler:
         print(f"HTML length: {len(html)}")
         return page
 
+    def set_custom_hooks(self, hooks: Dict[str, Callable]):
+        for hook_name, hook_function in hooks.items():
+            self.crawler.crawler_strategy.set_hook(hook_name, hook_function)
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def basic_crawl(self, url: str) -> str:
         extraction_strategy = NoExtractionStrategy()
@@ -118,6 +122,12 @@ class WebCrawler:
         async with self.crawler as crawler:
             result = await crawler.arun(url=url, screenshot=True)
             return base64.b64encode(result.screenshot).decode('utf-8')
+
+    async def save_screenshot(self, url: str, filename: str = "screenshot.png") -> None:
+        screenshot_base64 = await self.take_screenshot(url)
+        with open(filename, "wb") as f:
+            f.write(base64.b64decode(screenshot_base64))
+        print(f"Screenshot saved to '{filename}'!")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def chunked_crawl(self, url: str) -> str:
@@ -203,7 +213,17 @@ class WebCrawler:
         return {
             "extracted_content": result.extracted_content,
             "html_length": len(result.html) if result.html else 0,
-            "url": result.url
+            "url": result.url,
+            "media": result.media,
+            "links": result.links
+        }
+
+    async def extract_media_and_links(self, url: str) -> Dict[str, Any]:
+        async with self.crawler as crawler:
+            result = await crawler.arun(url=url)
+        return {
+            "media": result.media,
+            "links": result.links
         }
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
