@@ -24,7 +24,7 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
 ## Installation
 
 ```bash
-pip install crawl4ai
+pip install crawl4ai[all]
 ```
 
 ## Quick Start
