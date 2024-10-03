@@ -1,12 +1,11 @@
 import asyncio
 import json
 from flask import Flask, render_template, request, jsonify
-from crawler import WebCrawler
 
-app = Flask(__name__)
-crawler = WebCrawler()
+def create_app(crawler):
+    app = Flask(__name__)
 
-@app.route('/')
+    @app.route('/')
 def index():
     return render_template('index.html')
 
@@ -55,5 +54,4 @@ def crawl():
 
     return jsonify({'result': result})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    return app
