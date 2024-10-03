@@ -69,6 +69,35 @@ import asyncio
 asyncio.run(main())
 ```
 
+## Running the Script
+
+To run the script, follow these steps:
+
+1. Make sure you're in the project directory and your virtual environment is activated.
+
+2. Create a new Python file, for example `main.py`, and paste the following code:
+
+   ```python
+   from crawl4ai import WebCrawler
+   import asyncio
+
+   async def main():
+       crawler = WebCrawler()
+       result = await crawler.basic_crawl("https://example.com")
+       print(result)
+
+   if __name__ == "__main__":
+       asyncio.run(main())
+   ```
+
+3. Run the script using Python:
+
+   ```bash
+   python main.py
+   ```
+
+   This will execute the basic crawl and print the results.
+
 ## Advanced Usage
 
 ### Structured Data Extraction
