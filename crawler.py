@@ -7,6 +7,7 @@ import os
 from typing import List, Dict, Any, Optional, Callable
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy, LLMExtractionStrategy, CosineStrategy, NoExtractionStrategy
+import json
 from crawl4ai.chunking_strategy import RegexChunking
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 from playwright.async_api import Page, Browser
@@ -587,6 +588,127 @@ class WebCrawler:
             await crawler.crawler_strategy.kill_session(session_id)
 
         return all_items
+
+    async def extract_complex_product_data(self, url: str) -> Dict[str, Any]:
+        """
+        Extract complex product data using JsonCssExtractionStrategy.
+
+        :param url: URL to crawl
+        :return: Extracted product data
+        """
+        schema = {
+            "name": "E-commerce Product Catalog",
+            "baseSelector": "div.category",
+            "fields": [
+                {
+                    "name": "category_name",
+                    "selector": "h2.category-name",
+                    "type": "text"
+                },
+                {
+                    "name": "products",
+                    "selector": "div.product",
+                    "type": "nested_list",
+                    "fields": [
+                        {
+                            "name": "name",
+                            "selector": "h3.product-name",
+                            "type": "text"
+                        },
+                        {
+                            "name": "price",
+                            "selector": "p.product-price",
+                            "type": "text"
+                        },
+                        {
+                            "name": "details",
+                            "selector": "div.product-details",
+                            "type": "nested",
+                            "fields": [
+                                {
+                                    "name": "brand",
+                                    "selector": "span.brand",
+                                    "type": "text"
+                                },
+                                {
+                                    "name": "model",
+                                    "selector": "span.model",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "features",
+                            "selector": "ul.product-features li",
+                            "type": "list",
+                            "fields": [
+                                {
+                                    "name": "feature",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "reviews",
+                            "selector": "div.review",
+                            "type": "nested_list",
+                            "fields": [
+                                {
+                                    "name": "reviewer",
+                                    "selector": "span.reviewer",
+                                    "type": "text"
+                                },
+                                {
+                                    "name": "rating",
+                                    "selector": "span.rating",
+                                    "type": "text"
+                                },
+                                {
+                                    "name": "comment",
+                                    "selector": "p.review-text",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "related_products",
+                            "selector": "ul.related-products li",
+                            "type": "list",
+                            "fields": [
+                                {
+                                    "name": "name",
+                                    "selector": "span.related-name",
+                                    "type": "text"
+                                },
+                                {
+                                    "name": "price",
+                                    "selector": "span.related-price",
+                                    "type": "text"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+        extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
+
+        async with self.crawler as crawler:
+            result = await crawler.arun(
+                url=url,
+                extraction_strategy=extraction_strategy,
+                bypass_cache=True,
+            )
+
+            if not result.success:
+                return {"error": f"Failed to crawl the page: {result.error_message}"}
+
+            try:
+                product_data = json.loads(result.extracted_content)
+                return product_data
+            except json.JSONDecodeError:
+                return {"error": "Failed to parse the extracted content as JSON"}
 
     async def advanced_session_crawl_with_hooks(self, url: str, num_pages: int = 3, content_selector: str = 'li.commit-item', next_page_selector: str = 'a.pagination-next') -> List[Dict[str, Any]]:
         """
