@@ -17,6 +17,9 @@ Crawl4AI is a powerful and versatile Python library for web crawling, data extra
 - **Proxy Rotation**: Rotate through a list of proxies for distributed crawling
 - **Custom Extraction Strategies**: Implement your own extraction logic
 - **Flexible Content Chunking**: Various strategies for content segmentation
+- **Complex Product Data Extraction**: Extract detailed product information from e-commerce sites
+- **Advanced Session Crawling**: Perform sophisticated multi-page crawls with custom hooks
+- **Wait-for Parameter Crawling**: Efficiently crawl dynamic content with customizable wait conditions
 
 ## Installation
 
@@ -70,6 +73,33 @@ async def analyze_content():
     print(summary)
 
 asyncio.run(analyze_content())
+```
+
+### Complex Product Data Extraction
+
+```python
+async def extract_complex_product_data():
+    crawler = WebCrawler()
+    product_data = await crawler.extract_complex_product_data("https://example.com/product")
+    print(product_data)
+
+asyncio.run(extract_complex_product_data())
+```
+
+### Advanced Session Crawling
+
+```python
+async def advanced_session_crawl():
+    crawler = WebCrawler()
+    results = await crawler.advanced_session_crawl_with_hooks(
+        "https://example.com/page1",
+        num_pages=3,
+        content_selector="div.content-item",
+        next_page_selector="a.next-page"
+    )
+    print(results)
+
+asyncio.run(advanced_session_crawl())
 ```
 
 ## Configuration
