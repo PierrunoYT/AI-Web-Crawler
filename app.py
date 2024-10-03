@@ -6,10 +6,10 @@ def create_app(crawler):
     app = Flask(__name__)
 
     @app.route('/')
-def index():
-    return render_template('index.html')
+    def index():
+        return render_template('index.html')
 
-@app.route('/crawl', methods=['POST'])
+    @app.route('/crawl', methods=['POST'])
 def crawl():
     url = request.form['url']
     crawl_type = request.form['type']
