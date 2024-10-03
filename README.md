@@ -13,21 +13,53 @@ This project is a versatile web crawler with various functionalities, including 
 ## Setup
 
 1. Ensure you have Python 3.7+ installed.
-2. Install the required packages:
+2. Set up a virtual environment (see "Virtual Environment Setup" section below).
+3. Install the required packages:
    ```
    pip install -r requirements.txt
    ```
-3. Set up the necessary environment variables:
+4. Set up the necessary environment variables:
    - `OPENAI_API_KEY`: Your OpenAI API key
    - `GROQ_API_KEY`: Your Groq API key
 
+## Virtual Environment Setup
+
+### Windows
+
+1. Open Command Prompt or PowerShell
+2. Navigate to your project directory
+3. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+4. Activate the virtual environment:
+   ```
+   venv\Scripts\activate
+   ```
+
+### macOS and Linux
+
+1. Open Terminal
+2. Navigate to your project directory
+3. Create a virtual environment:
+   ```
+   python3 -m venv venv
+   ```
+4. Activate the virtual environment:
+   ```
+   source venv/bin/activate
+   ```
+
+After activating the virtual environment, your command prompt should change to indicate that the virtual environment is active. You can now proceed with installing the required packages.
+
 ## Running the Application
 
-1. Run the following command in the project directory:
+1. Ensure your virtual environment is activated.
+2. Run the following command in the project directory:
    ```
    python web_crawler.py
    ```
-2. Open a web browser and navigate to `http://localhost:5000` to access the web interface.
+3. Open a web browser and navigate to `http://localhost:5000` to access the web interface.
 
 ## Features
 
