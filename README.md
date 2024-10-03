@@ -102,6 +102,19 @@ After activating the virtual environment, your command prompt should change to i
 - `/`: Home page
 - `/crawl` (POST): Endpoint for all crawling operations
 
+## Handling of Extracted Content
+
+The extracted content from web crawling operations is processed in-memory and is not automatically saved to a file or database. Instead, it is returned as part of the JSON response to API requests. The handling of the extracted content varies depending on the type of crawl:
+
+1. Basic and chunked crawls return a portion of the extracted content.
+2. Structured data extraction returns a list of extracted items.
+3. LLM-based extraction and summarization return processed content as a Python dictionary.
+4. Advanced and custom session crawls return extracted content along with additional metadata.
+5. Multi-page summarization returns a list of summaries for multiple URLs.
+6. The research assistant functionality uses the extracted content to generate a response, which is then returned.
+
+If persistent storage of the extracted content is required, you would need to implement additional functionality to save the results to a file or database after receiving the API response.
+
 ## Contributing
 
 Feel free to submit issues or pull requests if you have any improvements or bug fixes.
