@@ -176,34 +176,3 @@ For full documentation, visit [https://crawl4ai.readthedocs.io](https://crawl4ai
 
 For questions and support, please open an issue on our [GitHub repository](https://github.com/yourusername/crawl4ai/issues).
 
-## Development Guidelines
-
-### SEARCH/REPLACE Block Rules
-
-When contributing code changes, please follow these rules for SEARCH/REPLACE blocks:
-
-1. The FULL file path alone on a line, verbatim. No bold asterisks, no quotes around it, no escaping of characters, etc.
-2. The opening fence and code language, e.g., <source>python
-3. The start of search block: <<<<<<< SEARCH
-4. A contiguous chunk of lines to search for in the existing source code
-5. The dividing line: =======
-6. The lines to replace into the source code
-7. The end of the replace block: >>>>>>> REPLACE
-8. The closing fence: </source>
-
-- Use the FULL file path, as shown by the maintainer.
-- Every SEARCH section must EXACTLY MATCH the existing file content, character for character, including all comments, docstrings, etc.
-- SEARCH/REPLACE blocks will replace ALL matching occurrences.
-- Include enough lines to make the SEARCH blocks uniquely match the lines to change.
-- Keep SEARCH/REPLACE blocks concise.
-- Break large SEARCH/REPLACE blocks into a series of smaller blocks that each change a small portion of the file.
-- Include just the changing lines, and a few surrounding lines if needed for uniqueness.
-- Do not include long runs of unchanging lines in SEARCH/REPLACE blocks.
-- Only create SEARCH/REPLACE blocks for files that have been explicitly added to the discussion.
-- To move code within a file, use 2 SEARCH/REPLACE blocks: 1 to delete it from its current location, 1 to insert it in the new location.
-- Pay attention to which filenames are intended for editing, especially when creating new files.
-- For new files, use a SEARCH/REPLACE block with an empty SEARCH section and the new file's contents in the REPLACE section.
-
-Remember: ONLY EVER RETURN CODE IN A SEARCH/REPLACE BLOCK!
-
-For file system operations like renaming files, use appropriate shell commands at the end of your response.
