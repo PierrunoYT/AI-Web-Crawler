@@ -4,7 +4,7 @@ import json
 import csv
 import time
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy, LLMExtractionStrategy, CosineStrategy, NoExtractionStrategy
 from crawl4ai.chunking_strategy import RegexChunking
@@ -91,7 +91,7 @@ class WebCrawler:
         print(f"HTML length: {len(html)}")
         return page
 
-    def set_custom_hooks(self, hooks: Dict[str, Callable]):
+    def set_custom_hooks(self, hooks: Dict[str, Callable[..., Any]]):
         for hook_name, hook_function in hooks.items():
             self.crawler.crawler_strategy.set_hook(hook_name, hook_function)
 
