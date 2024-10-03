@@ -1,18 +1,32 @@
 import asyncio
 import base64
 import json
+import csv
+import time
 import os
+from typing import List, Dict, Any, Optional
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy, LLMExtractionStrategy, CosineStrategy, NoExtractionStrategy
 from crawl4ai.chunking_strategy import RegexChunking
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 from playwright.async_api import Page, Browser
 from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
+from aiohttp import ClientSession
 from models import PageSummary
 from utils import extract_urls, crawl_urls
 
 class WebCrawler:
-    def __init__(self):
+    """
+    A comprehensive web crawling and data extraction class that utilizes AsyncWebCrawler.
+    
+    This class provides various methods for crawling web pages, extracting structured data,
+    summarizing content, and performing research tasks. It supports advanced features such as
+    custom JavaScript execution, pagination handling, and integration with language models
+    for content analysis and summarization.
+    """
+
+    def __init__(self, proxy_list: Optional[List[str]] = None):
         crawler_strategy = AsyncPlaywrightCrawlerStrategy(verbose=True)
         crawler_strategy.set_hook('on_browser_created', self.on_browser_created)
         crawler_strategy.set_hook('before_goto', self.before_goto)
@@ -20,6 +34,7 @@ class WebCrawler:
         crawler_strategy.set_hook('on_execution_started', self.on_execution_started)
         crawler_strategy.set_hook('before_return_html', self.before_return_html)
         self.crawler = AsyncWebCrawler(verbose=True, crawler_strategy=crawler_strategy)
+        self.proxy_list = proxy_list or []
         
         self.summarization_strategy = LLMExtractionStrategy(
             provider="openai/gpt-4o",
@@ -40,8 +55,9 @@ class WebCrawler:
         )
         
         self.client = AsyncOpenAI(base_url="https://api.groq.com/openai/v1", api_key=os.getenv("GROQ_API_KEY"))
-        
-        self.settings = {
+
+    def get_default_llm_settings(self) -> Dict[str, Any]:
+        return {
             "model": "llama3-8b-8192",
             "temperature": 0.5,
             "max_tokens": 500,
@@ -75,17 +91,36 @@ class WebCrawler:
         print(f"HTML length: {len(html)}")
         return page
 
-    async def basic_crawl(self, url):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def basic_crawl(self, url: str) -> str:
+        extraction_strategy = NoExtractionStrategy()
+        chunking_strategy = RegexChunking()
         async with self.crawler as crawler:
-            result = await crawler.arun(url=url)
-            return result.markdown[:500]  # Return first 500 characters
+            result = await crawler.arun(
+                url=url,
+                word_count_threshold=10,
+                extraction_strategy=extraction_strategy,
+                chunking_strategy=chunking_strategy,
+                bypass_cache=False,
+                css_selector=None,
+                screenshot=False,
+                user_agent=None,
+                verbose=True,
+                only_text=False
+            )
+            if result.success:
+                return result.markdown[:500]  # Return first 500 characters
+            else:
+                return f"Error: {result.error_message}"
 
-    async def take_screenshot(self, url):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def take_screenshot(self, url: str) -> str:
         async with self.crawler as crawler:
             result = await crawler.arun(url=url, screenshot=True)
             return base64.b64encode(result.screenshot).decode('utf-8')
 
-    async def chunked_crawl(self, url):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def chunked_crawl(self, url: str) -> str:
         async with self.crawler as crawler:
             result = await crawler.arun(
                 url=url,
@@ -93,7 +128,8 @@ class WebCrawler:
             )
             return result.extracted_content[:200]
 
-    async def extract_structured_data(self, url, schema):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def extract_structured_data(self, url: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
 
         async with self.crawler as crawler:
@@ -109,7 +145,8 @@ class WebCrawler:
             extracted_data = json.loads(result.extracted_content)
             return extracted_data[:10]  # Return first 10 items
 
-    async def extract_with_llm(self, url, instruction):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def extract_with_llm(self, url: str, instruction: str) -> Dict[str, Any]:
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             return {"error": "OPENAI_API_KEY environment variable is not set"}
@@ -133,7 +170,8 @@ class WebCrawler:
             extracted_data = json.loads(result.extracted_content)
             return extracted_data
 
-    async def advanced_crawl(self, url):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def advanced_crawl(self, url: str) -> Dict[str, Any]:
         js_code = """
         const loadMoreButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Load More'));
         if (loadMoreButton) {
@@ -168,7 +206,46 @@ class WebCrawler:
             "url": result.url
         }
 
-    async def custom_session_crawl(self, url):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def advanced_configurable_crawl(self, url: str, **kwargs) -> Dict[str, Any]:
+        default_settings = {
+            "word_count_threshold": 10,
+            "extraction_strategy": NoExtractionStrategy(),
+            "chunking_strategy": RegexChunking(),
+            "bypass_cache": False,
+            "css_selector": None,
+            "screenshot": False,
+            "user_agent": None,
+            "verbose": True,
+            "only_text": False,
+            "js_code": None,
+            "wait_for": None,
+            "session_id": None
+        }
+
+        # Update default settings with provided kwargs
+        settings = {**default_settings, **kwargs}
+
+        async with self.crawler as crawler:
+            try:
+                result = await crawler.arun(
+                    url=url,
+                    **settings
+                )
+                if result.success:
+                    return {
+                        "extracted_content": result.extracted_content,
+                        "html_length": len(result.html) if result.html else 0,
+                        "url": result.url,
+                        "screenshot": base64.b64encode(result.screenshot).decode('utf-8') if result.screenshot else None
+                    }
+                else:
+                    return {"error": f"Crawl failed: {result.error_message}"}
+            except Exception as e:
+                return {"error": f"An error occurred: {str(e)}"}
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def custom_session_crawl(self, url: str) -> Dict[str, Any]:
         js_code = """
         const loadMoreButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Load More'));
         if (loadMoreButton) {
@@ -205,23 +282,35 @@ class WebCrawler:
             "additional_js": result2.html
         }
 
-    async def summarize(self, url):
-        async with self.crawler as crawler:
-            result = await crawler.arun(
-                url=url,
-                word_count_threshold=1,
-                extraction_strategy=self.summarization_strategy,
-                chunking_strategy=RegexChunking(),
-                bypass_cache=True
-            )
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def summarize(self, url: str) -> Dict[str, Any]:
+        try:
+            async with self.crawler as crawler:
+                result = await crawler.arun(
+                    url=url,
+                    word_count_threshold=1,
+                    extraction_strategy=self.summarization_strategy,
+                    chunking_strategy=RegexChunking(),
+                    bypass_cache=True,
+                    verbose=True,
+                    only_text=True,
+                    wait_for="body"
+                )
 
-        if result.success:
-            page_summary = json.loads(result.extracted_content)
-            return page_summary
-        else:
-            return {"error": f"Failed to summarize the page. Error: {result.error_message}"}
+            if result.success:
+                page_summary = json.loads(result.extracted_content)
+                return page_summary
+            else:
+                return {"error": f"Failed to summarize the page. Error: {result.error_message}"}
+        except json.JSONDecodeError:
+            return {"error": "Failed to parse the extracted content as JSON"}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
 
-    async def summarize_multiple(self, urls):
+    # ... (rest of the code remains unchanged)
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def summarize_multiple(self, urls: List[str], use_proxy: bool = False) -> List[Dict[str, Any]]:
         async with self.crawler as crawler:
             tasks = [crawler.arun(
                 url=url,
@@ -229,7 +318,8 @@ class WebCrawler:
                 extraction_strategy=self.summarization_strategy,
                 chunking_strategy=RegexChunking(),
                 bypass_cache=True
-            ) for url in urls]
+            ) for url in urls
+            ]
             results = await asyncio.gather(*tasks)
 
         summaries = []
@@ -242,7 +332,84 @@ class WebCrawler:
 
         return summaries
 
-    async def research_assistant(self, user_message, context):
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def crawl_multiple(self, urls: List[str], **kwargs) -> List[Dict[str, Any]]:
+        """
+        Crawl multiple URLs concurrently using the same configuration.
+        
+        :param urls: List of URLs to crawl
+        """
+        async with self.crawler as crawler:
+            tasks = [crawler.arun(url=url, **kwargs) for url in urls]
+            results = await asyncio.gather(*tasks)
+
+        return [
+            {
+                "url": result.url,
+                "success": result.success,
+                "extracted_content": result.extracted_content if result.success else None,
+                "error": result.error_message if not result.success else None
+            }
+            for result in results
+        ]
+
+    async def clear_cache(self) -> None:
+        """Clear the crawler's cache."""
+        async with self.crawler as crawler:
+            await crawler.aclear_cache()
+
+    async def flush_cache(self) -> None:
+        """Completely flush the crawler's cache."""
+        async with self.crawler as crawler:
+            await crawler.aflush_cache()
+
+    async def get_cache_size(self) -> int:
+        """Get the current size of the cache."""
+        async with self.crawler as crawler:
+            return await crawler.aget_cache_size()
+
+    async def paginated_crawl(self, url: str, max_pages: int = 5, scroll_delay: int = 2, **kwargs) -> List[str]:
+        """
+        Perform a paginated crawl by scrolling and waiting for new content.
+        
+        :param url: URL to crawl
+        :param max_pages: Maximum number of pages to crawl
+        :param scroll_delay: Delay in seconds between scrolls
+        :param kwargs: Additional parameters for the crawler
+        """
+        if 'js_code' in kwargs or 'wait_for' in kwargs:
+            print("Warning: 'js_code' and 'wait_for' parameters will be overwritten for pagination handling.")
+        
+        kwargs['bypass_cache'] = kwargs.get('bypass_cache', True)  # Ensure fresh content for each page
+        results = []
+        async with self.crawler as crawler:
+            for page in range(max_pages):
+                result = await crawler.arun(url=url, **kwargs)
+                if result.success:
+                    results.append(result.extracted_content)
+                else:
+                    break
+
+                # Scroll to bottom and wait for new content
+                js_code = "window.scrollTo(0, document.body.scrollHeight);"
+                await crawler.crawler_strategy.execute_js(
+                    js_code=js_code,
+                    wait_for_js="() => window.innerHeight + window.scrollY >= document.body.offsetHeight"
+                )
+                await asyncio.sleep(scroll_delay)
+
+        return results
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def research_assistant(self, user_message: str, context: Dict[str, Any], llm_settings: Optional[Dict[str, Any]] = None) -> str:
+        """
+        Perform research based on user message, crawl URLs, and generate a response using an LLM.
+        
+        :param user_message: User's input message
+        :param context: Dictionary to store context information
+        :param llm_settings: Custom LLM settings (optional)
+        """
+        settings = llm_settings or self.get_default_llm_settings()
         urls = extract_urls(user_message)
         
         if urls:
@@ -275,7 +442,7 @@ class WebCrawler:
         stream = await self.client.chat.completions.create(
             messages=messages,
             stream=True,
-            **self.settings
+            **settings
         )
 
         assistant_response = ""
@@ -290,3 +457,78 @@ class WebCrawler:
             assistant_response += reference_section
 
         return assistant_response
+
+    async def handle_dynamic_content(self, url: str, scroll_interval: int = 2, max_scrolls: int = 10, **kwargs) -> Optional[str]:
+        """
+        Handle dynamic content loading (e.g., infinite scrolling) more generally.
+        
+        :param url: URL to crawl
+        :param scroll_interval: Time to wait between scrolls (in seconds)
+        :param max_scrolls: Maximum number of scrolls to perform
+        :param kwargs: Additional parameters for the crawler
+        """
+        try:
+            async with self.crawler as crawler:
+                result = await crawler.arun(url=url, **kwargs)
+                if not result.success:
+                    return None
+                initial_content = result.extracted_content
+
+                for _ in range(max_scrolls):
+                    js_code = "window.scrollTo(0, document.body.scrollHeight);"
+                    await crawler.crawler_strategy.execute_js(
+                        js_code=js_code,
+                        wait_for_js="() => window.innerHeight + window.scrollY >= document.body.offsetHeight"
+                    )
+                    await asyncio.sleep(scroll_interval)
+
+                    new_result = await crawler.arun(url=url, **kwargs)
+                    if not new_result.success or new_result.extracted_content == initial_content:
+                        break
+                    initial_content = new_result.extracted_content
+        except Exception as e:
+            print(f"Error handling dynamic content: {str(e)}")
+            return None
+        return initial_content
+
+    async def export_data(self, data: List[Dict[str, Any]], export_format: str = 'json', filename: str = 'crawled_data') -> str:
+        """
+        Export crawled data in various formats (JSON or CSV).
+        
+        :param data: List of dictionaries containing crawled data
+        :param export_format: Format to export data ('json' or 'csv')
+        :param filename: Name of the file to save the exported data
+        """
+        if export_format == 'json':
+            with open(f"{filename}.json", 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            return f"Data exported to {filename}.json"
+        elif export_format == 'csv':
+            keys = set().union(*(d.keys() for d in data))
+            with open(f"{filename}.csv", 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(data)
+            return f"Data exported to {filename}.csv"
+        else:
+            return "Invalid export format. Use 'json' or 'csv'."
+
+    def get_next_proxy(self) -> Optional[str]:
+        return self.proxy_list.pop(0) if self.proxy_list else None
+
+    async def rotate_proxy(self, url: str, **kwargs) -> Dict[str, Any]:
+        """
+        Rotate through available proxies when crawling a URL.
+        
+        :param url: URL to crawl
+        :param kwargs: Additional parameters for the crawler
+        """
+        while True:
+            proxy = self.get_next_proxy()
+            if not proxy:
+                return {"error": "No more proxies available"}
+            
+            kwargs['proxy'] = proxy
+            result = await self.advanced_configurable_crawl(url, **kwargs)
+            if result.get('error') is None:
+                return result
