@@ -7,6 +7,7 @@ import os
 from typing import List, Dict, Any, Optional, Callable
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy, LLMExtractionStrategy, CosineStrategy, NoExtractionStrategy
+from typing import Dict, Any, Optional
 import json
 from crawl4ai.chunking_strategy import (
     RegexChunking,
@@ -595,6 +596,74 @@ class WebCrawler:
 
         return all_items
 
+    async def extract_with_cosine_strategy(self, url: str, semantic_filter: Optional[str] = None, word_count_threshold: int = 20, max_dist: float = 0.2, linkage_method: str = 'ward', top_k: int = 3, model_name: str = 'BAAI/bge-small-en-v1.5') -> str:
+        """
+        Extract content using CosineStrategy.
+
+        :param url: URL to crawl
+        :param semantic_filter: Keywords for filtering relevant documents before clustering
+        :param word_count_threshold: Minimum number of words per cluster
+        :param max_dist: Maximum cophenetic distance on the dendrogram to form clusters
+        :param linkage_method: Linkage method for hierarchical clustering
+        :param top_k: Number of top categories to extract
+        :param model_name: Model name for embedding generation
+        :return: Extracted content
+        """
+        strategy = CosineStrategy(
+            semantic_filter=semantic_filter,
+            word_count_threshold=word_count_threshold,
+            max_dist=max_dist,
+            linkage_method=linkage_method,
+            top_k=top_k,
+            model_name=model_name
+        )
+
+        async with self.crawler as crawler:
+            result = await crawler.arun(url=url, extraction_strategy=strategy)
+            return result.extracted_content if result.success else f"Error: {result.error_message}"
+
+    async def extract_with_llm_strategy(self, url: str, provider: str = 'openai', api_token: Optional[str] = None, instruction: Optional[str] = None) -> str:
+        """
+        Extract content using LLMExtractionStrategy.
+
+        :param url: URL to crawl
+        :param provider: Provider for language model completions
+        :param api_token: API token for the provider
+        :param instruction: Instructions to guide the LLM on how to perform the extraction
+        :return: Extracted content
+        """
+        strategy = LLMExtractionStrategy(
+            provider=provider,
+            api_token=api_token or os.getenv('OPENAI_API_KEY'),
+            instruction=instruction
+        )
+
+        async with self.crawler as crawler:
+            result = await crawler.arun(url=url, extraction_strategy=strategy)
+            return result.extracted_content if result.success else f"Error: {result.error_message}"
+
+    async def extract_with_json_css_strategy(self, url: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract content using JsonCssExtractionStrategy.
+
+        :param url: URL to crawl
+        :param schema: A dictionary defining the extraction schema
+        :return: Extracted structured data
+        """
+        strategy = JsonCssExtractionStrategy(schema, verbose=True)
+
+        async with self.crawler as crawler:
+            result = await crawler.arun(url=url, extraction_strategy=strategy)
+            
+            if not result.success:
+                return {"error": f"Failed to crawl the page: {result.error_message}"}
+
+            try:
+                extracted_data = json.loads(result.extracted_content)
+                return extracted_data
+            except json.JSONDecodeError:
+                return {"error": "Failed to parse the extracted content as JSON"}
+
     async def chunk_content(self, url: str, chunking_strategy: str = 'regex', **kwargs) -> List[str]:
         """
         Crawl a URL and chunk the content using the specified chunking strategy.
@@ -634,6 +703,12 @@ class WebCrawler:
             return chunks
 
     async def extract_complex_product_data(self, url: str) -> Dict[str, Any]:
+        """
+        Extract complex product data using JsonCssExtractionStrategy.
+
+        :param url: URL to crawl
+        :return: Extracted product data
+        """
         """
         Extract complex product data using JsonCssExtractionStrategy.
 
