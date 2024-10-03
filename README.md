@@ -1,5 +1,7 @@
 # AIWebCrawler: Advanced Web Crawling and Data Extraction Library
 
+**Note: This project is based on [https://github.com/unclecode/crawl4ai](https://github.com/unclecode/crawl4ai). It is currently not fully functional and should be used as a template or starting point for your own implementation.**
+
 AIWebCrawler is a powerful and versatile Python library for web crawling, data extraction, and content analysis. It provides a wide range of features to handle various web scraping scenarios, from basic crawling to advanced session-based extractions and AI-powered content analysis.
 
 ## Features
