@@ -18,6 +18,8 @@ def create_app(crawler):
             result = asyncio.run(crawler.basic_crawl(url))
         elif crawl_type == 'screenshot':
             result = asyncio.run(crawler.take_screenshot(url))
+            if result is None:
+                return jsonify({'error': 'Failed to take screenshot'})
         elif crawl_type == 'chunked':
             result = asyncio.run(crawler.chunked_crawl(url))
         elif crawl_type == 'structured':

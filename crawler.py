@@ -126,10 +126,14 @@ class WebCrawler:
                 return f"Error: {result.error_message}"
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    async def take_screenshot(self, url: str) -> str:
+    async def take_screenshot(self, url: str) -> Optional[str]:
         async with self.crawler as crawler:
             result = await crawler.arun(url=url, screenshot=True)
-            return base64.b64encode(result.screenshot).decode('utf-8')
+            if result.screenshot:
+                return base64.b64encode(result.screenshot).decode('utf-8')
+            else:
+                print(f"Warning: Failed to take screenshot for {url}")
+                return None
 
     async def save_screenshot(self, url: str, filename: str = "screenshot.png") -> None:
         screenshot_base64 = await self.take_screenshot(url)
