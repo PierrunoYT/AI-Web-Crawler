@@ -1,124 +1,96 @@
-# Web Crawler Project
+# Crawl4AI: Advanced Web Crawling and Data Extraction Library
 
-This project is a versatile web crawler with various functionalities, including basic crawling, screenshot capture, content extraction, and more. It uses Flask to provide a web interface for interacting with the crawler.
-
-## Project Structure
-
-- `web_crawler.py`: Main entry point of the application
-- `app.py`: Flask application and routes
-- `crawler.py`: WebCrawler class with all crawling functionalities
-- `models.py`: Pydantic models for data structures
-- `utils.py`: Utility functions for URL extraction and crawling
-
-## Setup
-
-1. Ensure you have Python 3.7+ installed.
-2. Set up a virtual environment (see "Virtual Environment Setup" section below).
-3. Install the required packages:
-   ```
-   pip install -r requirements.txt
-   ```
-4. Set up the necessary environment variables:
-   - `OPENAI_API_KEY`: Your OpenAI API key
-   - `GROQ_API_KEY`: Your Groq API key
-
-   ### Setting Environment Variables
-
-   #### Windows
-   Using Command Prompt:
-   ```
-   set OPENAI_API_KEY=your_openai_api_key_here
-   set GROQ_API_KEY=your_groq_api_key_here
-   ```
-   Or to set them permanently:
-   ```
-   setx OPENAI_API_KEY your_openai_api_key_here
-   setx GROQ_API_KEY your_groq_api_key_here
-   ```
-   Note: After using `setx`, you'll need to restart your command prompt for the changes to take effect.
-
-   #### macOS and Linux
-   In Terminal:
-   ```
-   export OPENAI_API_KEY=your_openai_api_key_here
-   export GROQ_API_KEY=your_groq_api_key_here
-   ```
-   To make these permanent, add these lines to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
-
-## Virtual Environment Setup
-
-### Windows
-
-1. Open Command Prompt or PowerShell
-2. Navigate to your project directory
-3. Create a virtual environment:
-   ```
-   python -m venv venv
-   ```
-4. Activate the virtual environment:
-   ```
-   venv\Scripts\activate
-   ```
-
-### macOS and Linux
-
-1. Open Terminal
-2. Navigate to your project directory
-3. Create a virtual environment:
-   ```
-   python3 -m venv venv
-   ```
-4. Activate the virtual environment:
-   ```
-   source venv/bin/activate
-   ```
-
-After activating the virtual environment, your command prompt should change to indicate that the virtual environment is active. You can now proceed with installing the required packages.
-
-## Running the Application
-
-1. Ensure your virtual environment is activated.
-2. Run the following command in the project directory:
-   ```
-   python web_crawler.py
-   ```
-3. Open a web browser and navigate to `http://localhost:5000` to access the web interface.
+Crawl4AI is a powerful and versatile Python library for web crawling, data extraction, and content analysis. It provides a wide range of features to handle various web scraping scenarios, from basic crawling to advanced session-based extractions and AI-powered content analysis.
 
 ## Features
 
-- Basic crawling
-- Screenshot capture
-- Chunked crawling
-- Structured data extraction
-- LLM-based extraction
-- Advanced crawling with JavaScript execution
-- Custom session crawling
-- Page summarization
-- Multi-page summarization
-- Research assistant functionality
+- **Basic Crawling**: Simple URL fetching and content extraction
+- **Screenshot Capture**: Capture screenshots of web pages
+- **Chunked Crawling**: Split content into manageable chunks
+- **Structured Data Extraction**: Extract data using CSS selectors and JSON schemas
+- **LLM-based Extraction**: Leverage Language Models for intelligent content extraction
+- **Advanced JavaScript Handling**: Execute custom JavaScript for dynamic content
+- **Session-based Crawling**: Maintain state across multiple requests
+- **Page Summarization**: Generate concise summaries of web pages
+- **Multi-page Analysis**: Crawl and analyze multiple pages concurrently
+- **Research Assistant**: AI-powered content analysis and question answering
+- **Proxy Rotation**: Rotate through a list of proxies for distributed crawling
+- **Custom Extraction Strategies**: Implement your own extraction logic
+- **Flexible Content Chunking**: Various strategies for content segmentation
 
-## API Endpoints
+## Installation
 
-- `/`: Home page
-- `/crawl` (POST): Endpoint for all crawling operations
+```bash
+pip install crawl4ai
+```
 
-## Handling of Extracted Content
+## Quick Start
 
-The extracted content from web crawling operations is processed in-memory and is not automatically saved to a file or database. Instead, it is returned as part of the JSON response to API requests. The handling of the extracted content varies depending on the type of crawl:
+```python
+from crawl4ai import WebCrawler
 
-1. Basic and chunked crawls return a portion of the extracted content.
-2. Structured data extraction returns a list of extracted items.
-3. LLM-based extraction and summarization return processed content as a Python dictionary.
-4. Advanced and custom session crawls return extracted content along with additional metadata.
-5. Multi-page summarization returns a list of summaries for multiple URLs.
-6. The research assistant functionality uses the extracted content to generate a response, which is then returned.
+async def main():
+    crawler = WebCrawler()
+    result = await crawler.basic_crawl("https://example.com")
+    print(result)
 
-If persistent storage of the extracted content is required, you would need to implement additional functionality to save the results to a file or database after receiving the API response.
+import asyncio
+asyncio.run(main())
+```
+
+## Advanced Usage
+
+### Structured Data Extraction
+
+```python
+schema = {
+    "name": "Product Catalog",
+    "baseSelector": "div.product",
+    "fields": [
+        {"name": "name", "selector": "h2.product-name", "type": "text"},
+        {"name": "price", "selector": "span.price", "type": "text"},
+        {"name": "description", "selector": "p.description", "type": "text"}
+    ]
+}
+
+async def extract_products():
+    crawler = WebCrawler()
+    products = await crawler.extract_with_json_css_strategy("https://example.com/products", schema)
+    print(products)
+
+asyncio.run(extract_products())
+```
+
+### AI-Powered Content Analysis
+
+```python
+async def analyze_content():
+    crawler = WebCrawler()
+    summary = await crawler.summarize("https://example.com/article")
+    print(summary)
+
+asyncio.run(analyze_content())
+```
+
+## Configuration
+
+Crawl4AI can be configured using environment variables:
+
+- `OPENAI_API_KEY`: Your OpenAI API key for LLM-based features
+- `GROQ_API_KEY`: Your Groq API key for alternative LLM provider
 
 ## Contributing
 
-Feel free to submit issues or pull requests if you have any improvements or bug fixes.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
 
 ## License
 
-[MIT License](LICENSE)
+Crawl4AI is released under the [MIT License](LICENSE).
+
+## Documentation
+
+For full documentation, visit [https://crawl4ai.readthedocs.io](https://crawl4ai.readthedocs.io).
+
+## Support
+
+For questions and support, please open an issue on our [GitHub repository](https://github.com/yourusername/crawl4ai/issues).
